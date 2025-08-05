@@ -1,3 +1,3 @@
-// TODO: Webpack Konfiguration für Electron + React
-// TODO: Entry points für main/renderer processes
-// TODO: TypeScript loader, CSS loader konfigurieren
+// This file is kept for compatibility
+// Main webpack configs are in webpack.main.config.js and webpack.renderer.config.js
+module.exports = require('./webpack.renderer.config.js');
