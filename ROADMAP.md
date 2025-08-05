@@ -16,11 +16,6 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [ ] Tailwind CSS konfigurieren
   - [ ] ESLint und Prettier Setup
 
-- [ ] **Git Repository**
-  - [ ] .gitignore erstellen
-  - [ ] Initial commit
-  - [ ] Branch-Strategie definieren
-
 ### 🗄️ Datenbank Foundation  
 - [ ] **SQLite Setup**
   - [ ] Database connection konfigurieren
@@ -198,7 +193,8 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 - [ ] **Cloud Synchronization**
   - [ ] Backend API development
   - [ ] User authentication
-  - [ ] Data sync service
+  - [ ] Data sync service (Important!!)
+  - [ ] Data scraping of DevJobs.at + Additional Page for Overview of fitting jobs
 
 - [ ] **Mobile App**
   - [ ] React Native setup
