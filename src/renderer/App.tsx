@@ -1,3 +1,38 @@
-// TODO: React App Entry Point
-// TODO: Root Component, Router setup
-// TODO: Global Providers (Context, Theme)
+import React, { useState } from 'react';
+import { Layout } from './components/layout/Layout';
+import { Dashboard } from './pages/Dashboard';
+
+export type PageType = 'dashboard' | 'applications' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
+
+const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+
+  const renderCurrentPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'applications':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Bewerbungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'companies':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Unternehmen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'contacts':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kontakte</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'calendar':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kalender</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'reminders':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Erinnerungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'settings':
+        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Einstellungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+      {renderCurrentPage()}
+    </Layout>
+  );
+};
+
+export default App;
