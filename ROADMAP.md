@@ -30,11 +30,11 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Reminders Tabelle erstellen
 
 ### 🎨 UI Foundation
-- [ ] **Base Components**
-  - [ ] Button Component
-  - [ ] Input Component  
-  - [ ] Select Component
-  - [ ] Card Component
+- [✓] **Base Components**
+  - [✓] Button Component
+  - [✓] Input Component  
+  - [✓] Select Component
+  - [✓] Card Component
   - [ ] Badge Component
   - [ ] Modal Component
 
@@ -47,22 +47,22 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 ## 🚀 Phase 2: Core Features
 
 ### 📝 Feature 1: Bewerbung erfassen
-- [ ] **Frontend**
-  - [ ] ApplicationForm Component
-  - [ ] Form validation implementieren
+- [✓] **Frontend**
+  - [✓] ApplicationForm Component
+  - [✓] Form validation implementieren
   - [ ] File Upload Component
-  - [ ] Form state management
+  - [✓] Form state management
 
-- [ ] **Backend Logic**
-  - [ ] Application Model erstellen
-  - [ ] ApplicationService für CRUD operations
+- [✓] **Backend Logic**
+  - [✓] Application Model erstellen
+  - [✓] ApplicationService für CRUD operations
   - [ ] File handling service
-  - [ ] Data validation
+  - [✓] Data validation
 
-- [ ] **Integration**
-  - [ ] Frontend mit Backend verbinden
-  - [ ] Error handling implementieren
-  - [ ] Success feedback
+- [✓] **Integration**
+  - [✓] Frontend mit Backend verbinden
+  - [✓] Error handling implementieren
+  - [✓] Success feedback
 
 ### 📋 Feature 2: Bewerbungen anzeigen
 - [ ] **Components**
