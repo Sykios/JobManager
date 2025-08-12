@@ -35,7 +35,8 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Input Component  
   - [✓] Select Component
   - [✓] Card Component
-  - [ ] Badge Component
+  - [✓] Badge Component
+  - [✓] Loading Component
   - [ ] Modal Component
 
 - [ ] **Layout Structure**
@@ -65,15 +66,19 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Success feedback
 
 ### 📋 Feature 2: Bewerbungen anzeigen
-- [ ] **Components**
-  - [ ] ApplicationCard Component
-  - [ ] ApplicationList Component
-  - [ ] Empty state handling
+- [✓] **Components**
+  - [✓] ApplicationCard Component
+  - [✓] ApplicationList Component
+  - [✓] Empty state handling
+  - [✓] Loading states with skeleton UI
 
-- [ ] **Functionality**
-  - [ ] Bewerbungen aus Database laden
-  - [ ] List/Grid view toggle
-  - [ ] Loading states implementieren
+- [✓] **Functionality**
+  - [✓] Bewerbungen aus Database laden
+  - [✓] List/Grid view toggle
+  - [✓] Search and filter functionality
+  - [✓] Sorting by multiple fields
+  - [✓] Status filtering
+  - [✓] Applications page integration
 
 ### 🚦 Feature 3: Status Management
 - [ ] **Status System**
