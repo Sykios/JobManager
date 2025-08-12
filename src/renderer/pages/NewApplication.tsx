@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ApplicationForm } from '../components/applications/ApplicationForm';
 import { ApplicationCreateData } from '../../services/ApplicationService';
 
-export const NewApplication: React.FC = () => {
-  const navigate = useNavigate();
+interface NewApplicationProps {
+  onNavigate?: (page: string, state?: any) => void;
+}
+
+export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSubmit = async (data: ApplicationCreateData) => {
     setIsLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       // For now, we'll implement a direct database call
@@ -48,11 +52,15 @@ export const NewApplication: React.FC = () => {
 
       const result = await window.electronAPI.executeQuery(query, params);
       
-      // Navigate to the applications list with success message
-      navigate('/applications', { 
-        replace: true,
-        state: { message: 'Bewerbung erfolgreich erstellt!' }
-      });
+      setSuccess('Bewerbung erfolgreich erstellt!');
+      
+      // Reset form after successful submission
+      setTimeout(() => {
+        if (onNavigate) {
+          onNavigate('applications', { message: 'Bewerbung erfolgreich erstellt!' });
+        }
+      }, 2000);
+
     } catch (error) {
       console.error('Error creating application:', error);
       setError(
@@ -66,7 +74,9 @@ export const NewApplication: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate('/applications');
+    if (onNavigate) {
+      onNavigate('applications');
+    }
   };
 
   return (
@@ -77,6 +87,36 @@ export const NewApplication: React.FC = () => {
           Erfassen Sie alle wichtigen Informationen zu Ihrer neuen Bewerbung.
         </p>
       </div>
+
+      {success && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-green-400"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-green-800">
+                Erfolg!
+              </h3>
+              <div className="mt-2 text-sm text-green-700">
+                <p>{success}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">

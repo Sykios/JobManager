@@ -2,7 +2,7 @@ import React from 'react';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 
-export type PageType = 'dashboard' | 'applications' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentPage, onPageCha
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <Header />
+      <Header onNavigate={onPageChange} />
       
       {/* Main Content */}
       <div className="flex">

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
+import { NewApplication } from './pages/NewApplication';
 
-export type PageType = 'dashboard' | 'applications' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -13,6 +14,8 @@ const App: React.FC = () => {
         return <Dashboard />;
       case 'applications':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Bewerbungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+      case 'new-application':
+        return <NewApplication onNavigate={(page) => setCurrentPage(page as PageType)} />;
       case 'companies':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Unternehmen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'contacts':
