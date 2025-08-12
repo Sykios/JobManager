@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   executeQuery: (query: string, params?: any[]) => 
     ipcRenderer.invoke('db:execute', query, params),
   
+  queryDatabase: (query: string, params?: any[]) => 
+    ipcRenderer.invoke('db:query', query, params),
+  
   // File operations
   openFile: () => ipcRenderer.invoke('file:open'),
   saveFile: (data: any) => ipcRenderer.invoke('file:save', data),
@@ -25,6 +28,7 @@ declare global {
   interface Window {
     electronAPI: {
       executeQuery: (query: string, params?: any[]) => Promise<any>;
+      queryDatabase: (query: string, params?: any[]) => Promise<any>;
       openFile: () => Promise<string>;
       saveFile: (data: any) => Promise<boolean>;
       getVersion: () => Promise<string>;

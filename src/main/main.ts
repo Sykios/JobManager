@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import { setupDatabase, initializeDatabase, getDatabase } from '../database';
 
 let mainWindow: BrowserWindow;
 
@@ -39,9 +40,75 @@ const createWindow = (): void => {
   });
 };
 
+// Set up IPC handlers
+const setupIpcHandlers = (): void => {
+  // Database operations
+  ipcMain.handle('db:execute', async (event, query: string, params?: any[]) => {
+    try {
+      const db = getDatabase();
+      const result = await db.run(query, params);
+      return result;
+    } catch (error) {
+      console.error('Database execute error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('db:query', async (event, query: string, params?: any[]) => {
+    try {
+      const db = getDatabase();
+      const result = await db.all(query, params);
+      return result;
+    } catch (error) {
+      console.error('Database query error:', error);
+      throw error;
+    }
+  });
+
+  // App operations
+  ipcMain.handle('app:version', () => {
+    return app.getVersion();
+  });
+
+  // Window operations
+  ipcMain.handle('window:minimize', () => {
+    if (mainWindow) {
+      mainWindow.minimize();
+    }
+  });
+
+  ipcMain.handle('window:maximize', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+    }
+  });
+
+  ipcMain.handle('window:close', () => {
+    if (mainWindow) {
+      mainWindow.close();
+    }
+  });
+};
+
 // This method will be called when Electron has finished initialization
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(async () => {
+  try {
+    // Initialize database
+    await setupDatabase(false); // Set to true if you want demo data
+    
+    // Set up IPC handlers
+    setupIpcHandlers();
+    
+    // Create window
+    createWindow();
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    app.quit();
+  }
 
   // On macOS, re-create window when dock icon is clicked
   app.on('activate', () => {
