@@ -3,6 +3,7 @@ import { ApplicationCard } from './ApplicationCard';
 import { Button } from '../ui/Button';
 import { Select, SelectOption } from '../ui/Select';
 import { Input } from '../ui/Input';
+import { CardSkeleton } from '../common/Loading';
 import { Application, ApplicationStatus } from '../../../types';
 
 export interface ApplicationListProps {
@@ -136,11 +137,13 @@ export const ApplicationList: React.FC<ApplicationListProps> = ({
   );
 
   const LoadingState = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className={
+      viewMode === 'grid'
+        ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
+        : 'space-y-4'
+    }>
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="animate-pulse">
-          <div className="bg-gray-200 h-64 rounded-lg"></div>
-        </div>
+        <CardSkeleton key={i} />
       ))}
     </div>
   );
