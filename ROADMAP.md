@@ -93,16 +93,16 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Date tracking
 
 ### 🔍 Feature 4: Suche & Filter
-- [ ] **Search**
-  - [ ] SearchFilter Component
-  - [ ] Text search implementation
-  - [ ] Search in multiple fields
+- [✓] **Search**
+  - [✓] SearchFilter Component
+  - [✓] Text search implementation
+  - [✓] Search in multiple fields
 
-- [ ] **Filter System**
-  - [ ] Filter by status
-  - [ ] Filter by company
-  - [ ] Filter by date range
-  - [ ] Advanced filter options
+- [✓] **Filter System**
+  - [✓] Filter by status
+  - [✓] Filter by company
+  - [✓] Filter by date range
+  - [✓] Advanced filter options
 
 ### 👥 Feature 5: Kontakte verwalten
 - [ ] **Contact Management**
