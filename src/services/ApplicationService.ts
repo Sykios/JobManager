@@ -2,6 +2,7 @@ import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
 import { Application, ApplicationStatus, WorkType, Priority } from '../types';
 import { ApplicationModel } from '../models/Application';
+import { StatusHistoryService } from './StatusHistoryService';
 
 export interface ApplicationFilters {
   status?: ApplicationStatus | ApplicationStatus[];
@@ -40,7 +41,10 @@ export interface ApplicationUpdateData extends Partial<ApplicationCreateData> {
 }
 
 export class ApplicationService {
-  constructor(private db: Database<sqlite3.Database, sqlite3.Statement>) {}
+  constructor(
+    private db: Database<sqlite3.Database, sqlite3.Statement>,
+    private statusHistoryService?: StatusHistoryService
+  ) {}
 
   /**
    * Create a new application
@@ -223,10 +227,41 @@ export class ApplicationService {
   }
 
   /**
-   * Update application status
+   * Update application status with history tracking
    */
-  async updateStatus(id: number, status: ApplicationStatus): Promise<ApplicationModel> {
-    return this.update(id, { status });
+  async updateStatus(id: number, status: ApplicationStatus, note?: string): Promise<ApplicationModel> {
+    // Get current application to track the status change
+    const currentApplication = await this.getById(id);
+    const oldStatus = currentApplication.status;
+
+    // Update the application status
+    const updatedApplication = await this.update(id, { status });
+
+    // Record status history if service is available and status actually changed
+    if (this.statusHistoryService && oldStatus !== status) {
+      await this.statusHistoryService.recordStatusChange({
+        application_id: id,
+        from_status: oldStatus,
+        to_status: status,
+        note,
+      });
+    }
+
+    return updatedApplication;
+  }
+
+  /**
+   * Get application with its status history
+   */
+  async getWithStatusHistory(id: number): Promise<ApplicationModel & { statusHistory?: any[] }> {
+    const application = await this.getById(id);
+    
+    if (this.statusHistoryService) {
+      const statusHistory = await this.statusHistoryService.getByApplicationId(id);
+      return Object.assign(application, { statusHistory });
+    }
+
+    return application;
   }
 
   /**
