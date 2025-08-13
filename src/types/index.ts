@@ -68,6 +68,17 @@ export interface Application {
   updated_at: string;
 }
 
+// Status History Types
+export interface StatusHistory {
+  id: number;
+  application_id: number;
+  from_status: ApplicationStatus | null;
+  to_status: ApplicationStatus;
+  note?: string;
+  created_at: string;
+  created_by?: string;
+}
+
 // UI Types
 export interface NavItem {
   id: string;
