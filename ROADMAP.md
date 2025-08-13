@@ -81,16 +81,16 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Applications page integration
 
 ### 🚦 Feature 3: Status Management
-- [ ] **Status System**
-  - [ ] Status enums definieren
-  - [ ] StatusChanger Component
-  - [ ] Status update logic
-  - [ ] Visual status indicators
+- [✓] **Status System**
+  - [✓] Status enums definieren
+  - [✓] StatusChanger Component
+  - [✓] Status update logic
+  - [✓] Visual status indicators
 
-- [ ] **Timeline**
-  - [ ] Status history tracking
-  - [ ] Timeline visualization
-  - [ ] Date tracking
+- [✓] **Timeline**
+  - [✓] Status history tracking
+  - [✓] Timeline visualization
+  - [✓] Date tracking
 
 ### 🔍 Feature 4: Suche & Filter
 - [ ] **Search**
