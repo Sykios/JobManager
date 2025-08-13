@@ -3,6 +3,8 @@ import * as sqlite3 from 'sqlite3';
 import { Application, ApplicationStatus, WorkType, Priority } from '../types';
 import { ApplicationModel } from '../models/Application';
 import { StatusHistoryService } from './StatusHistoryService';
+import { FileService } from './FileService';
+import { FileModel } from '../models/File';
 
 export interface ApplicationFilters {
   status?: ApplicationStatus | ApplicationStatus[];
@@ -43,7 +45,8 @@ export interface ApplicationUpdateData extends Partial<ApplicationCreateData> {
 export class ApplicationService {
   constructor(
     private db: Database<sqlite3.Database, sqlite3.Statement>,
-    private statusHistoryService?: StatusHistoryService
+    private statusHistoryService?: StatusHistoryService,
+    private fileService?: FileService
   ) {}
 
   /**
@@ -328,5 +331,106 @@ export class ApplicationService {
       averagePriority: avgResult?.avg || 0,
       upcomingDeadlines: upcomingDeadlines.length,
     };
+  }
+
+  /**
+   * Get application with its attached files
+   */
+  async getWithFiles(id: number): Promise<ApplicationModel & { files: FileModel[] }> {
+    const application = await this.getById(id);
+    
+    if (this.fileService) {
+      const files = await this.fileService.getByApplication(id);
+      return Object.assign(application, { files });
+    }
+
+    return Object.assign(application, { files: [] });
+  }
+
+  /**
+   * Attach a file to an application
+   */
+  async attachFile(applicationId: number, fileId: number): Promise<void> {
+    if (!this.fileService) {
+      throw new Error('File service not available');
+    }
+
+    // Verify application exists
+    await this.getById(applicationId);
+
+    // Link the file to the application
+    await this.fileService.linkToApplication(fileId, applicationId);
+  }
+
+  /**
+   * Detach a file from an application
+   */
+  async detachFile(applicationId: number, fileId: number): Promise<void> {
+    if (!this.fileService) {
+      throw new Error('File service not available');
+    }
+
+    // Verify application exists
+    await this.getById(applicationId);
+
+    // Unlink the file from the application
+    await this.fileService.unlinkFromApplication(fileId);
+  }
+
+  /**
+   * Get all files attached to an application
+   */
+  async getFiles(applicationId: number): Promise<FileModel[]> {
+    if (!this.fileService) {
+      return [];
+    }
+
+    // Verify application exists
+    await this.getById(applicationId);
+
+    return this.fileService.getByApplication(applicationId);
+  }
+
+  /**
+   * Delete application and clean up associated files
+   */
+  async deleteWithCleanup(id: number): Promise<void> {
+    if (this.fileService) {
+      // Get all files attached to this application
+      const files = await this.fileService.getByApplication(id);
+      
+      // Unlink all files from the application
+      for (const file of files) {
+        if (file.id) {
+          await this.fileService.unlinkFromApplication(file.id);
+        }
+      }
+    }
+
+    // Delete the application
+    await this.delete(id);
+  }
+
+  /**
+   * Get applications with file statistics
+   */
+  async getAllWithFileStats(filters?: ApplicationFilters): Promise<(ApplicationModel & { fileCount: number; totalFileSize: number })[]> {
+    const applications = await this.getAll(filters);
+    
+    if (!this.fileService) {
+      return applications.map(app => Object.assign(app, { fileCount: 0, totalFileSize: 0 }));
+    }
+
+    const applicationsWithStats = await Promise.all(
+      applications.map(async (application) => {
+        const files = await this.fileService!.getByApplication(application.id);
+        const fileCount = files.length;
+        const totalFileSize = files.reduce((sum: number, file: FileModel) => sum + file.size, 0);
+        
+        return Object.assign(application, { fileCount, totalFileSize });
+      })
+    );
+
+    return applicationsWithStats;
   }
 }
