@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Application, ApplicationStatus } from '../../../types';
+import { StatusBadge, StatusProgress } from '../ui/StatusIndicators';
+import { StatusChanger } from './StatusChanger';
 
 export interface ApplicationCardProps {
   application: Application;
   onEdit?: (application: Application) => void;
   onDelete?: (application: Application) => void;
-  onStatusChange?: (application: Application, newStatus: ApplicationStatus) => void;
+  onStatusChange?: (application: Application, newStatus: ApplicationStatus, note?: string) => Promise<void>;
   onView?: (application: Application) => void;
+  showStatusChanger?: boolean;
+  showStatusProgress?: boolean;
 }
 
 const statusConfig: Record<ApplicationStatus, { color: string; label: string }> = {
@@ -36,9 +40,26 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
   onDelete,
   onStatusChange,
   onView,
+  showStatusChanger = false,
+  showStatusProgress = false,
 }) => {
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const statusInfo = statusConfig[application.status];
   const priorityInfo = priorityConfig[application.priority];
+
+  const handleStatusChange = async (newStatus: ApplicationStatus, note?: string) => {
+    if (!onStatusChange) return;
+    
+    setIsUpdatingStatus(true);
+    try {
+      await onStatusChange(application, newStatus, note);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      throw error; // Re-throw to let StatusChanger handle the error
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
@@ -78,9 +99,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
             )}
           </div>
           <div className="flex items-center space-x-2 ml-4">
-            <Badge variant={statusInfo.color as any}>
-              {statusInfo.label}
-            </Badge>
+            <StatusBadge status={application.status} size="sm" />
             {application.priority > 3 && (
               <Badge variant={priorityInfo.color as any} size="sm">
                 P{application.priority}
@@ -145,6 +164,26 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
               <p className="text-sm text-gray-700 line-clamp-2">
                 {application.notes}
               </p>
+            </div>
+          )}
+
+          {/* Status Progress */}
+          {showStatusProgress && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <StatusProgress currentStatus={application.status} />
+            </div>
+          )}
+
+          {/* Status Changer */}
+          {showStatusChanger && onStatusChange && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <StatusChanger
+                currentStatus={application.status}
+                onStatusChange={handleStatusChange}
+                disabled={isUpdatingStatus}
+                compact={true}
+                showCurrentBadge={false}
+              />
             </div>
           )}
         </div>
