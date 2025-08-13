@@ -105,11 +105,11 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Advanced filter options
 
 ### 👥 Feature 5: Kontakte verwalten
-- [ ] **Contact Management**
-  - [ ] Contact Model und Service
-  - [ ] Contacts Page
-  - [ ] Add/Edit Contact forms
-  - [ ] Contact-Application relationships
+- [✓] **Contact Management**
+  - [✓] Contact Model und Service
+  - [✓] Contacts Page
+  - [✓] Add/Edit Contact forms
+  - [✓] Contact-Application relationships
 
 ### 📁 Feature 6: File Management
 - [ ] **File System**
