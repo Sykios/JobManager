@@ -11,7 +11,7 @@ export interface ApplicationListProps {
   loading?: boolean;
   onEdit?: (application: Application) => void;
   onDelete?: (application: Application) => void;
-  onStatusChange?: (application: Application, newStatus: ApplicationStatus) => void;
+  onStatusChange?: (application: Application, newStatus: ApplicationStatus, note?: string) => Promise<void>;
   onView?: (application: Application) => void;
   onCreateNew?: () => void;
 }
