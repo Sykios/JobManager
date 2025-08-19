@@ -109,10 +109,11 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     CREATE TABLE IF NOT EXISTS status_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       application_id INTEGER NOT NULL,
-      old_status TEXT,
-      new_status TEXT NOT NULL,
-      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      notes TEXT,
+      from_status TEXT,
+      to_status TEXT NOT NULL,
+      note TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_by TEXT,
       FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
     )
   `);
@@ -173,7 +174,7 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     AFTER UPDATE OF status ON applications
     WHEN OLD.status != NEW.status
     BEGIN 
-      INSERT INTO status_history (application_id, old_status, new_status)
+      INSERT INTO status_history (application_id, from_status, to_status)
       VALUES (NEW.id, OLD.status, NEW.status);
     END
   `);

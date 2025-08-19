@@ -88,8 +88,9 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
   };
 
   const handleView = (application: Application) => {
-    // TODO: Navigate to application detail view
-    console.log('View application:', application);
+    if (onNavigate) {
+      onNavigate('application-detail', { application });
+    }
   };
 
   return (

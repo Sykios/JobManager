@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { Applications, NewApplication } from './pages/applications';
+import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
 import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 
-export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+  const [pageState, setPageState] = useState<any>(null);
 
   const handlePageChange = (page: string | PageType, state?: any) => {
     setCurrentPage(page as PageType);
+    setPageState(state);
   };
 
   const handleError = (error: Error, errorInfo: any) => {
@@ -42,6 +44,27 @@ const App: React.FC = () => {
             }
           >
             <NewApplication onNavigate={handlePageChange} />
+          </ErrorBoundary>
+        );
+      case 'application-detail':
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler beim Laden der Bewerbungsdetails</h1>
+                <p>Es gab ein Problem beim Laden der Bewerbungsdetails.</p>
+                <button onClick={() => setCurrentPage('applications')} className="back-button">
+                  Zurück zur Bewerbungsübersicht
+                </button>
+              </div>
+            }
+          >
+            <ApplicationDetail 
+              application={pageState?.application}
+              applicationId={pageState?.applicationId}
+              onNavigate={handlePageChange} 
+            />
           </ErrorBoundary>
         );
       case 'companies':
