@@ -34,36 +34,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Add lifecycle logging
-  useEffect(() => {
-    console.log('ContactSelector: Component mounted');
-    console.log('ContactSelector: Props:', { selectedContactId, placeholder, disabled });
-    
-    return () => {
-      console.log('ContactSelector: Component unmounting');
-      console.log('ContactSelector: Final state:', { 
-        selectedContact: selectedContact?.id, 
-        showCreateForm, 
-        saving, 
-        isOpen 
-      });
-    };
-  }, []);
 
-  // Track selectedContactId changes
-  useEffect(() => {
-    console.log('ContactSelector: selectedContactId prop changed:', selectedContactId);
-  }, [selectedContactId]);
-
-  // Track showCreateForm state
-  useEffect(() => {
-    console.log('ContactSelector: showCreateForm state changed:', showCreateForm);
-  }, [showCreateForm]);
-
-  // Track saving state
-  useEffect(() => {
-    console.log('ContactSelector: saving state changed:', saving);
-  }, [saving]);
 
   // Load contacts from database
   const loadContacts = async () => {
@@ -161,10 +132,6 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
   };
 
   const handleSaveNewContact = async (contactData: any) => {
-    // IMMEDIATE DEBUGGING - does this function even start?
-    console.log('ContactSelector: handleSaveNewContact called!');
-    alert('ContactSelector: handleSaveNewContact was called!'); // This should always show
-    
     // Add window-level error tracking for this operation
     const originalOnError = window.onerror;
     const originalOnUnhandledRejection = window.onunhandledrejection;
@@ -184,44 +151,23 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
     
     try {
       setSaving(true);
-      console.log('ContactSelector: ===== STARTING CONTACT CREATION =====');
-      console.log('ContactSelector: Starting contact creation:', contactData); // Debug log
-      
-      // Check if ContactModel is imported correctly
-      console.log('ContactSelector: ContactModel class exists:', !!ContactModel);
-      console.log('ContactSelector: ContactModel type:', typeof ContactModel);
       
       if (!ContactModel) {
         throw new Error('ContactModel is not imported or undefined');
       }
       
-      // Immediate check - does ContactModel constructor work?
-      console.log('ContactSelector: Testing ContactModel constructor with raw data...');
-      console.log('ContactSelector: Data to pass to constructor:', JSON.stringify(contactData, null, 2));
-      
       try {
         // Test with minimal data first
-        console.log('ContactSelector: Testing with minimal data...');
         const minimalTest = new ContactModel({ first_name: 'Test' });
-        console.log('ContactSelector: Minimal test SUCCESS');
         
         // Test with actual data
-        console.log('ContactSelector: Testing with actual form data...');
         const testModel = new ContactModel(contactData);
-        console.log('ContactSelector: ContactModel constructor SUCCESS');
-        console.log('ContactSelector: Test model created:', testModel.getFullName());
         
         // Test validation immediately
-        console.log('ContactSelector: Testing validation...');
         const validationResult = testModel.validate();
-        console.log('ContactSelector: Validation result:', validationResult);
         
       } catch (constructorError) {
         console.error('ContactSelector: ContactModel constructor FAILED:', constructorError);
-        console.error('ContactSelector: Constructor error details:', {
-          message: constructorError instanceof Error ? constructorError.message : String(constructorError),
-          stack: constructorError instanceof Error ? constructorError.stack : 'No stack'
-        });
         throw new Error(`ContactModel constructor failed: ${constructorError}`);
       }
       
@@ -237,17 +183,12 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         company_id: contactData.company_id || null  // Ensure undefined becomes null
       };
       
-      console.log('ContactSelector: Normalized contact data:', normalizedData);
-      console.log('ContactSelector: company_id will be:', normalizedData.company_id, '(should be null since no companies exist)');
-      
       // List all companies for debugging
       try {
         const allCompanies = await window.electronAPI.queryDatabase('SELECT * FROM companies', []);
-        console.log('ContactSelector: All companies in database:', allCompanies);
         
         if (allCompanies.length === 0) {
-          console.log('ContactSelector: No companies exist - this is expected for now');
-          console.log('ContactSelector: company_id will be set to null, which should be fine');
+          // No companies exist - this is expected for now, company_id will be set to null
         }
       } catch (companyError) {
         console.error('ContactSelector: Error querying companies:', companyError);
@@ -255,31 +196,21 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
       
       // Validate the contact data before sending to database
       try {
-        console.log('ContactSelector: Creating ContactModel for validation...');
         const testContact = new ContactModel(normalizedData);
-        console.log('ContactSelector: ContactModel created, running validation...');
         const validation = testContact.validate();
-        console.log('ContactSelector: Validation result:', validation); // Debug log
         
         if (!validation.isValid) {
-          console.log('ContactSelector: Validation failed:', validation.errors); // Debug log
           throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
         }
         
-        console.log('ContactSelector: Validation passed successfully');
       } catch (validationError) {
         console.error('ContactSelector: Validation error:', validationError);
         const error = validationError instanceof Error ? validationError : new Error(String(validationError));
-        console.error('ContactSelector: Validation error details:', {
-          message: error.message,
-          stack: error.stack
-        });
         throw validationError;
       }
       
       // Create contact via IPC
       const now = new Date().toISOString();
-      console.log('ContactSelector: Executing database query'); // Debug log
       
       // Log the exact values being inserted
       const insertValues = [
@@ -294,17 +225,14 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         now,
         now
       ];
-      console.log('ContactSelector: Insert values:', insertValues);
       
       // Check if company_id is valid if provided
       if (normalizedData.company_id) {
-        console.log('ContactSelector: Checking if company_id exists:', normalizedData.company_id);
         try {
           const companyCheck = await window.electronAPI.queryDatabase(
             'SELECT id FROM companies WHERE id = ?',
             [normalizedData.company_id]
           );
-          console.log('ContactSelector: Company check result:', companyCheck);
           
           if (companyCheck.length === 0) {
             console.error('ContactSelector: Invalid company_id - company does not exist');
@@ -317,31 +245,18 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         }
       }
       
-      console.log('ContactSelector: About to execute INSERT query...');
-      console.log('ContactSelector: window.electronAPI exists:', !!window.electronAPI);
-      console.log('ContactSelector: executeQuery function exists:', !!window.electronAPI?.executeQuery);
-      
       let result;
       try {
-        console.log('ContactSelector: Calling window.electronAPI.executeQuery...');
         result = await window.electronAPI.executeQuery(
           `INSERT INTO contacts (first_name, last_name, email, phone, position, linkedin_url, notes, company_id, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           insertValues
         );
-        console.log('ContactSelector: INSERT query completed successfully:', result);
       } catch (insertError) {
         console.error('ContactSelector: INSERT query failed:', insertError);
         const error = insertError instanceof Error ? insertError : new Error(String(insertError));
-        console.error('ContactSelector: INSERT error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
         throw new Error(`Database insert failed: ${error.message}`);
       }
-      
-      console.log('ContactSelector: Database insert result:', result); // Debug log
       
       // Get the newly created contact
       const newContactResult = await window.electronAPI.queryDatabase(
@@ -349,26 +264,18 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         [result.lastID]
       );
       
-      console.log('ContactSelector: New contact query result:', newContactResult); // Debug log
-      
       if (newContactResult.length > 0) {
         const newContact = ContactModel.fromJSON(newContactResult[0]);
-        console.log('ContactSelector: Created contact model:', newContact); // Debug log
         
         // Reload contacts list
-        console.log('ContactSelector: Reloading contacts list'); // Debug log
         await loadContacts();
         
         // Auto-select the newly created contact
-        console.log('ContactSelector: Selecting new contact'); // Debug log
         setSelectedContact(newContact);
         onContactSelect(newContact);
         
-        console.log('ContactSelector: Contact successfully created and selected'); // Debug log
-        
         // Close the form
         setShowCreateForm(false);
-        console.log('ContactSelector: Contact creation completed successfully'); // Debug log
       } else {
         throw new Error('Failed to retrieve newly created contact');
       }
@@ -379,7 +286,6 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
       throw error; // Re-throw to prevent form from closing
     } finally {
       setSaving(false);
-      console.log('ContactSelector: ===== CONTACT CREATION FINISHED =====');
       
       // Restore original error handlers
       window.onerror = originalOnError;
@@ -388,10 +294,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
   };
 
   const handleCancelCreateForm = () => {
-    console.log('ContactSelector: Cancel create form called');
-    console.log('ContactSelector: Current showCreateForm state:', showCreateForm);
     setShowCreateForm(false);
-    console.log('ContactSelector: showCreateForm set to false');
   };
 
   return (
