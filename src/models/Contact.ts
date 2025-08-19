@@ -148,8 +148,16 @@ export class ContactModel {
   isValidPhone(): boolean {
     if (!this.phone) return true; // Phone is optional
     
-    // Allow various formats: +49 123 456789, 0123 456789, etc.
-    const phoneRegex = /^[\+]?[0-9]?[\(\)\-\s\.]*[0-9]{6,}$/;
+    // Remove all non-digits to check minimum length
+    const digits = this.phone.replace(/\D/g, '');
+    
+    // Must have at least 6 digits (very permissive)
+    if (digits.length < 6) return false;
+    
+    // Allow various formats including:
+    // +49 123 456789, 0123 456789, 01234567890, +43 123 456789, etc.
+    // Very permissive regex that allows most international formats
+    const phoneRegex = /^[\+]?[\d\(\)\-\s\.\/]{6,}$/;
     return phoneRegex.test(this.phone);
   }
 

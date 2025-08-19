@@ -35,22 +35,29 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    // Create temporary contact for validation
-    const tempContact = new ContactModel(formData);
-    const validation = tempContact.validate();
-    
-    if (!validation.isValid) {
-      validation.errors.forEach(error => {
-        if (error.includes('Vorname')) {
-          newErrors.first_name = error;
-        } else if (error.includes('E-Mail')) {
-          newErrors.email = error;
-        } else if (error.includes('Telefon')) {
-          newErrors.phone = error;
-        } else if (error.includes('LinkedIn')) {
-          newErrors.linkedin_url = error;
-        }
-      });
+    try {
+      // Create temporary contact for validation
+      const tempContact = new ContactModel(formData);
+      
+      // Validate the contact
+      const validation = tempContact.validate();
+      
+      if (!validation.isValid) {
+        validation.errors.forEach(error => {
+          if (error.includes('Vorname')) {
+            newErrors.first_name = error;
+          } else if (error.includes('E-Mail')) {
+            newErrors.email = error;
+          } else if (error.includes('Telefon')) {
+            newErrors.phone = error;
+          } else if (error.includes('LinkedIn')) {
+            newErrors.linkedin_url = error;
+          }
+        });
+      }
+    } catch (validationError) {
+      // Add a general error if validation itself fails
+      newErrors.general = 'Validation failed: ' + (validationError instanceof Error ? validationError.message : String(validationError));
     }
 
     setErrors(newErrors);
@@ -82,8 +89,7 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Mark all fields as touched
+    // Mark all fields as touched to show validation errors
     const allFields = Object.keys(formData);
     const touchedFields = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});
     setTouched(touchedFields);
@@ -92,7 +98,6 @@ export const ContactForm: React.FC<ContactFormProps> = ({
       try {
         await onSave(formData);
       } catch (error) {
-        console.error('Error saving contact:', error);
         setErrors({ general: 'Fehler beim Speichern des Kontakts' });
       }
     }
@@ -102,20 +107,52 @@ export const ContactForm: React.FC<ContactFormProps> = ({
     // Remove all non-digits
     const digits = value.replace(/\D/g, '');
     
-    // Format German phone numbers
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
-    if (digits.length <= 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+    // If starts with +, keep the + and format accordingly
+    const hasPlus = value.startsWith('+');
+    
+    // Handle different country codes and formats
+    if (hasPlus && digits.length > 0) {
+      // International format starting with +
+      if (digits.startsWith('49')) { // Germany
+        if (digits.length <= 2) return `+${digits}`;
+        if (digits.length <= 5) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+        if (digits.length <= 8) return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+        return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 12)}`;
+      } else if (digits.startsWith('43')) { // Austria  
+        if (digits.length <= 2) return `+${digits}`;
+        if (digits.length <= 5) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+        if (digits.length <= 8) return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+        return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+      } else {
+        // Generic international format
+        if (digits.length <= 3) return `+${digits}`;
+        if (digits.length <= 6) return `+${digits.slice(0, 3)} ${digits.slice(3)}`;
+        if (digits.length <= 10) return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+        return `+${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10)}`;
+      }
+    } else {
+      // Domestic format (German/Austrian)
+      if (digits.length === 0) return '';
+      if (digits.length <= 4) return digits;
+      if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+      if (digits.length <= 11) return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+      return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 11)}`;
+    }
   };
 
   const handlePhoneChange = (value: string) => {
+    // Allow + at the beginning
+    if (value === '+') {
+      handleInputChange('phone', '+');
+      return;
+    }
+    
     const formatted = formatPhoneAsYouType(value);
     handleInputChange('phone', formatted);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="contact-form">
+    <div className="contact-form">
       <div className="form-header">
         <h3>{contact ? 'Kontakt bearbeiten' : 'Neuen Kontakt erstellen'}</h3>
       </div>
@@ -254,7 +291,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           Abbrechen
         </button>
         <button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           className="btn-primary"
           disabled={isLoading}
         >
@@ -262,7 +300,170 @@ export const ContactForm: React.FC<ContactFormProps> = ({
         </button>
       </div>
 
+      <style>{`
+        .contact-form {
+          padding: 24px;
+          background: white;
+        }
 
-    </form>
+        .form-header {
+          margin-bottom: 24px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .form-header h3 {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .error-banner {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        }
+
+        .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .form-group.required label::after {
+          content: ' *';
+          color: #dc2626;
+        }
+
+        .form-group.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .form-group label {
+          display: block;
+          margin-bottom: 4px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .form-group input,
+        .form-group textarea {
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+          box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group input.error,
+        .form-group textarea.error {
+          border-color: #dc2626;
+        }
+
+        .form-group input:disabled,
+        .form-group textarea:disabled {
+          background-color: #f9fafb;
+          cursor: not-allowed;
+        }
+
+        .error-text {
+          font-size: 0.75rem;
+          color: #dc2626;
+          margin-top: 4px;
+        }
+
+        .form-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 24px;
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+          padding: 10px 20px;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 1px solid;
+          min-width: 120px;
+        }
+
+        .btn-primary {
+          background-color: #3b82f6;
+          color: white;
+          border-color: #3b82f6;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background-color: #2563eb;
+        }
+
+        .btn-primary:disabled {
+          background-color: #9ca3af;
+          cursor: not-allowed;
+        }
+
+        .btn-secondary {
+          background-color: white;
+          color: #374151;
+          border-color: #d1d5db;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background-color: #f9fafb;
+          border-color: #9ca3af;
+        }
+
+        .btn-secondary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+          .contact-form {
+            padding: 16px;
+          }
+
+          .form-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+
+          .form-actions {
+            flex-direction: column-reverse;
+          }
+
+          .btn-primary,
+          .btn-secondary {
+            width: 100%;
+          }
+        }
+      `}</style>
+    </div>
   );
 };
