@@ -75,3 +75,6 @@ temp/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Webpack cache
+.webpack-cache/
