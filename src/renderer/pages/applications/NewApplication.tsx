@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ApplicationForm } from '../components/applications/ApplicationForm';
-import { ApplicationCreateData } from '../../services/ApplicationService';
+import { ApplicationForm } from '../../components/applications/ApplicationForm';
+import { ApplicationCreateData } from '../../../services/ApplicationService';
 
 interface NewApplicationProps {
   onNavigate?: (page: string, state?: any) => void;

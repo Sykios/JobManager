@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { Applications } from './pages/Applications';
-import { NewApplication } from './pages/NewApplication';
+import { Applications, NewApplication } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
 import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';

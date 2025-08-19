@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ApplicationList } from '../components/applications/ApplicationList';
-import { Button } from '../components/ui/Button';
-import { Application, ApplicationStatus } from '../../types';
+import { ApplicationList } from '../../components/applications/ApplicationList';
+import { Button } from '../../components/ui/Button';
+import { Application, ApplicationStatus } from '../../../types';
 
 interface ApplicationsProps {
   onNavigate?: (page: string, state?: any) => void;
