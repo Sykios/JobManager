@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ContactModel } from '../../../models/Contact';
-import { ContactCard } from '../ContactCard';
+import { ContactCard } from './ContactCard';
 
 interface ContactListProps {
   contacts: ContactModel[];

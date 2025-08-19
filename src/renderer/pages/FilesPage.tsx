@@ -33,7 +33,9 @@ const FilesPage: React.FC = () => {
     if (!fileService || !file.id) return;
     try {
       const buffer = await fileService.getFileBuffer(file.id);
-      const blob = new Blob([buffer], { type: file.mime_type });
+      // Convert buffer to Uint8Array for blob creation
+      const uint8Array = new Uint8Array(buffer);
+      const blob = new Blob([uint8Array], { type: file.mime_type });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

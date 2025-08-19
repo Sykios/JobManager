@@ -4,9 +4,9 @@ import { Dashboard } from './pages/Dashboard';
 import { Applications } from './pages/Applications';
 import { NewApplication } from './pages/NewApplication';
 import { ContactsPage } from './pages/Contacts';
-import FilesPage from './pages/FilesPage';
+// import FilesPage from './pages/FilesPage'; // Temporarily deactivated
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { FileServiceProvider } from './context/FileServiceContext';
+import { DatabaseProvider } from './context/ApplicationContext';
 
 export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
 
@@ -64,11 +64,7 @@ const App: React.FC = () => {
           </ErrorBoundary>
         );
         case 'files':
-            return (
-              <FileServiceProvider>
-                <FilesPage />
-              </FileServiceProvider>
-            );
+            return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Dateiverwaltung</h1><p className="text-gray-600 mt-2">Temporarily deactivated - Coming soon...</p></div>;
       case 'calendar':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kalender</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'reminders':
@@ -144,9 +140,11 @@ const App: React.FC = () => {
         </div>
       }
     >
-      <Layout currentPage={currentPage} onPageChange={handlePageChange}>
-        {renderCurrentPage()}
-      </Layout>
+      <DatabaseProvider>
+        <Layout currentPage={currentPage} onPageChange={handlePageChange}>
+          {renderCurrentPage()}
+        </Layout>
+      </DatabaseProvider>
     </ErrorBoundary>
   );
 };

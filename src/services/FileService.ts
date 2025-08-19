@@ -102,6 +102,24 @@ export class FileService {
   }
 
   /**
+   * Determine MIME type from filename extension
+   */
+  private getMimeTypeFromExtension(filename: string): string {
+    const ext = path.extname(filename).toLowerCase().slice(1);
+    
+    switch (ext) {
+      case 'pdf': return 'application/pdf';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'txt': return 'text/plain';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'png': return 'image/png';
+      default: return 'application/octet-stream';
+    }
+  }
+
+  /**
    * Generate unique filename to avoid conflicts
    */
   private generateUniqueFilename(originalFilename: string): string {
@@ -167,6 +185,7 @@ export class FileService {
   async create(data: FileCreateData): Promise<FileModel> {
     const fileModel = new FileModel({
       ...data,
+      mime_type: this.getMimeTypeFromExtension(data.filename),
       upload_date: new Date().toISOString()
     });
 

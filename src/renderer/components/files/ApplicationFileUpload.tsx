@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Card, CardHeader, CardBody } from './Card';
+import { Card, CardHeader, CardBody } from '../ui/Card';
 
 interface FileUploadData {
   file: File;
