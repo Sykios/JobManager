@@ -973,6 +973,10 @@ export const ContactsPage: React.FC = () => {
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+          position: relative;
         }
 
         @media (max-width: 768px) {
