@@ -1,6 +1,7 @@
 import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
 import * as migration001 from './migrations/001_initial';
+import * as migration002 from './migrations/002_update_file_attachments';
 
 interface Migration {
   version: string;
@@ -13,6 +14,11 @@ const migrations: Migration[] = [
     version: '001_initial',
     up: migration001.up,
     down: migration001.down,
+  },
+  {
+    version: '002_update_file_attachments',
+    up: migration002.up,
+    down: migration002.down,
   },
 ];
 

@@ -4,13 +4,18 @@ import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
 import { Card, CardHeader, CardBody } from '../ui/Card';
 import { ContactSelector } from '../ui/ContactSelector';
+import { ApplicationFileUpload } from '../ui/ApplicationFileUpload';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
 import { ContactModel } from '../../../models/Contact';
 import { WorkType, Priority } from '../../../types';
 
 export interface ApplicationFormProps {
   initialData?: Partial<ApplicationCreateData>;
-  onSubmit: (data: ApplicationCreateData) => Promise<void>;
+  onSubmit: (data: ApplicationCreateData, files?: {
+    cv?: { file: File; description?: string };
+    coverLetter?: { file: File; description?: string };
+    additionalFiles: { file: File; description?: string }[];
+  }) => Promise<void>;
   onCancel?: () => void;
   isLoading?: boolean;
   submitLabel?: string;
@@ -83,6 +88,13 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [selectedContact, setSelectedContact] = useState<ContactModel | null>(null);
+  const [applicationFiles, setApplicationFiles] = useState<{
+    cv?: { file: File; description?: string };
+    coverLetter?: { file: File; description?: string };
+    additionalFiles: { file: File; description?: string }[];
+  }>({
+    additionalFiles: []
+  });
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -128,7 +140,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }
 
     try {
-      await onSubmit(formData);
+      const hasFiles = applicationFiles.cv || applicationFiles.coverLetter || applicationFiles.additionalFiles.length > 0;
+      await onSubmit(formData, hasFiles ? applicationFiles : undefined);
     } catch (error) {
       console.error('Error submitting form:', error);
       // Handle submission errors here
@@ -162,6 +175,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       ...prev,
       contact_id: contact?.id,
     }));
+  };
+
+  const handleFilesChange = (files: {
+    cv?: { file: File; description?: string };
+    coverLetter?: { file: File; description?: string };
+    additionalFiles: { file: File; description?: string }[];
+  }) => {
+    setApplicationFiles(files);
   };
 
   return (
@@ -344,6 +365,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
           </div>
         </CardBody>
       </Card>
+
+      <ApplicationFileUpload
+        onFilesChange={handleFilesChange}
+        disabled={isLoading}
+        className="mb-6"
+      />
 
       <div className="flex justify-end space-x-3">
         {onCancel && (

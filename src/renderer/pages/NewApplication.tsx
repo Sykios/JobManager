@@ -11,14 +11,20 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = async (data: ApplicationCreateData) => {
+  const handleSubmit = async (
+    data: ApplicationCreateData,
+    files?: {
+      cv?: { file: File; description?: string };
+      coverLetter?: { file: File; description?: string };
+      additionalFiles: { file: File; description?: string }[];
+    }
+  ) => {
     setIsLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // For now, we'll implement a direct database call
-      // Later we'll need to implement this through the main process
+      // First, create the application
       const query = `
         INSERT INTO applications (
           company_id, contact_id, title, position, job_url, application_channel,
@@ -51,6 +57,73 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
       ];
 
       const result = await window.electronAPI.executeQuery(query, params);
+      const applicationId = result.lastInsertRowid;
+
+      // Handle file uploads if any files are provided
+      if (files && applicationId) {
+        const filesToUpload: Array<{
+          file: File;
+          description: string;
+          category: 'cv' | 'cover_letter' | 'additional';
+        }> = [];
+
+        if (files.cv) {
+          filesToUpload.push({
+            file: files.cv.file,
+            description: files.cv.description || 'Lebenslauf',
+            category: 'cv'
+          });
+        }
+
+        if (files.coverLetter) {
+          filesToUpload.push({
+            file: files.coverLetter.file,
+            description: files.coverLetter.description || 'Anschreiben',
+            category: 'cover_letter'
+          });
+        }
+
+        files.additionalFiles.forEach(fileData => {
+          filesToUpload.push({
+            file: fileData.file,
+            description: fileData.description || fileData.file.name,
+            category: 'additional'
+          });
+        });
+
+        // Upload each file
+        for (const fileData of filesToUpload) {
+          try {
+            // Convert File to ArrayBuffer and then to Buffer-like object
+            const arrayBuffer = await fileData.file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            // Save file to database
+            const fileQuery = `
+              INSERT INTO file_attachments (
+                filename, file_size, file_type, file_data, description,
+                uploaded_at, application_id, category
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            const fileParams = [
+              fileData.file.name,
+              fileData.file.size,
+              fileData.file.type || 'application/octet-stream',
+              uint8Array,
+              fileData.description,
+              new Date().toISOString(),
+              applicationId,
+              fileData.category
+            ];
+
+            await window.electronAPI.executeQuery(fileQuery, fileParams);
+          } catch (fileError) {
+            console.error(`Error uploading file ${fileData.file.name}:`, fileError);
+            // Continue with other files even if one fails
+          }
+        }
+      }
       
       setSuccess('Bewerbung erfolgreich erstellt!');
       
