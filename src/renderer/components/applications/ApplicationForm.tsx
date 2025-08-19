@@ -3,7 +3,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
 import { Card, CardHeader, CardBody } from '../ui/Card';
-import { ContactSelector } from '../ui/ContactSelector';
+import { ContactSelector } from '../contacts';
 import { ApplicationFileUpload } from '../files/ApplicationFileUpload';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
 import { ContactModel } from '../../../models/Contact';
