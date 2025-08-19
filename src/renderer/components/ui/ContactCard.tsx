@@ -1,5 +1,5 @@
 import React from 'react';
-import { ContactModel } from '../models/Contact';
+import { ContactModel } from '../../../models/Contact';
 
 interface ContactCardProps {
   contact: ContactModel;

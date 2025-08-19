@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { FileModel } from '../models/File';
 
 interface FileUploadProps {
   onFileUpload: (files: File[], description?: string) => Promise<void>;

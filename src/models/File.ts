@@ -6,6 +6,7 @@ export interface FileModelProps {
   id?: number;
   application_id?: number;
   filename: string;
+  mime_type: string;
   type: FileType;
   size: number;
   upload_date: string;
@@ -17,6 +18,7 @@ export class FileModel {
   id?: number;
   application_id?: number;
   filename: string;
+  mime_type: string;
   type: FileType;
   size: number;
   upload_date: string;
@@ -27,6 +29,7 @@ export class FileModel {
     this.id = props.id;
     this.application_id = props.application_id;
     this.filename = props.filename;
+    this.mime_type = props.mime_type;
     this.type = props.type;
     this.size = props.size;
     this.upload_date = props.upload_date;
@@ -39,6 +42,7 @@ export class FileModel {
       id: json.id,
       application_id: json.application_id,
       filename: json.filename,
+      mime_type: json.mime_type,
       type: json.type,
       size: json.size,
       upload_date: json.upload_date,

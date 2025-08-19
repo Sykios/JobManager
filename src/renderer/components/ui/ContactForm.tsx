@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ContactModel } from '../models/Contact';
-import { ContactCreateData, ContactUpdateData } from '../services/ContactService';
+import { ContactModel } from '../../../models/Contact';
+import { ContactCreateData, ContactUpdateData } from '../../../services/ContactService';
 
 interface ContactFormProps {
   contact?: ContactModel;

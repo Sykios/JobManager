@@ -49,6 +49,35 @@ export class ApplicationService {
     private fileService?: FileService
   ) {}
 
+  async initializeTable(): Promise<void> {
+    await this.db.exec(`
+      CREATE TABLE IF NOT EXISTS applications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER,
+        contact_id INTEGER,
+        title TEXT NOT NULL,
+        position TEXT NOT NULL,
+        job_url TEXT,
+        application_channel TEXT,
+        salary_range TEXT,
+        work_type TEXT,
+        location TEXT,
+        remote_possible INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'draft',
+        priority INTEGER DEFAULT 3,
+        application_date TEXT,
+        deadline TEXT,
+        follow_up_date TEXT,
+        notes TEXT,
+        cover_letter TEXT,
+        requirements TEXT,
+        benefits TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+
   /**
    * Create a new application
    */

@@ -5,11 +5,10 @@ import { FileService } from '../services/FileService';
 import { ApplicationService } from '../services/ApplicationService';
 import { ApplicationModel } from '../models/Application';
 import { FileModel } from '../models/File';
-import { FileUpload } from '../components/FileUpload';
-import { FileList } from '../components/FileList';
-import { FileCard } from '../components/FileCard';
-import { ApplicationForm } from '../components/ApplicationForm';
-import { ApplicationDetail } from '../components/ApplicationDetail';
+import { FileUpload } from '../renderer/components/files/FileUpload';
+import { FileList } from '../renderer/components/files/FileList';
+import { FileCard } from '../renderer/components/files/FileCard';
+import { ApplicationDetail } from './ApplicationDetail';
 import { runFileManagementTests, TestResult } from '../tests/FileManagementTests';
 
 interface DemoState {
@@ -569,17 +568,12 @@ export const FileManagementDemo: React.FC = () => {
           <div className="application-section">
             <h2>{isCreatingApplication ? '➕ Neue Bewerbung erstellen' : '✏️ Bewerbung bearbeiten'}</h2>
             
-            <ApplicationForm
-              application={selectedApplication || undefined}
-              applicationService={applicationService}
-              fileService={fileService}
-              onSave={handleApplicationSave}
-              onCancel={() => {
-                setActiveView('overview');
-                setIsCreatingApplication(false);
-              }}
-              isEditing={!isCreatingApplication}
-            />
+            <div className="demo-placeholder">
+              <p>ApplicationForm demo is disabled - use the main application instead</p>
+              <button onClick={() => setActiveView('overview')} className="btn-secondary">
+                Zurück zur Übersicht
+              </button>
+            </div>
           </div>
         )}
 

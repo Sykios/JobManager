@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileModel, FileType } from '../models/File';
+import { FileModel, FileType } from '../../../models/File';
 import { FileCard } from './FileCard';
 
 interface FileListProps {

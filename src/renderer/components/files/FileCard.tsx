@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileModel } from '../models/File';
+import { FileModel } from '../../../models/File';
 
 interface FileCardProps {
   file: FileModel;

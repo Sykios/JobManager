@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ContactModel } from '../../../models/Contact';
-import { ContactForm } from '../../../components/ContactForm';
+import { ContactForm } from './ContactForm';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
 interface ContactSelectorProps {

@@ -5,6 +5,7 @@ export interface LoadingProps {
   size?: 'sm' | 'md' | 'lg';
   text?: string;
   className?: string;
+  message?: string;
 }
 
 export const Loading: React.FC<LoadingProps> = ({

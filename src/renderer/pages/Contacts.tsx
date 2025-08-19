@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ContactModel } from '../../models/Contact';
-import { ContactForm } from '../../components/ContactForm';
-import { ContactList } from '../../components/ContactList';
+import { ContactForm } from '../components/ui/ContactForm';
+import { ContactList } from '../components/ui/ContactList';
 
 // Types for IPC-based contact operations
 interface ContactFilters {

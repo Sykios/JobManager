@@ -4,7 +4,7 @@ import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
 import { Card, CardHeader, CardBody } from '../ui/Card';
 import { ContactSelector } from '../ui/ContactSelector';
-import { ApplicationFileUpload } from '../ui/ApplicationFileUpload';
+import { ApplicationFileUpload } from '../files/ApplicationFileUpload';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
 import { ContactModel } from '../../../models/Contact';
 import { WorkType, Priority } from '../../../types';
