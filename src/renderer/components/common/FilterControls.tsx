@@ -4,7 +4,7 @@ import { Select } from '../ui/Select';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { StatusBadge } from '../ui/StatusIndicators';
+import { StatusBadge } from '../applications/StatusIndicators';
 import { getStatusConfig } from '../../../utils/statusUtils';
 import { AdvancedApplicationFilters, DateRangeFilter } from '../../../utils/filterUtils';
 

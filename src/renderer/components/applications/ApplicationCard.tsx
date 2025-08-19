@@ -3,7 +3,7 @@ import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Application, ApplicationStatus } from '../../../types';
-import { StatusBadge, StatusProgress } from '../ui/StatusIndicators';
+import { StatusBadge, StatusProgress } from './StatusIndicators';
 import { StatusChanger } from './StatusChanger';
 
 export interface ApplicationCardProps {

@@ -6,7 +6,7 @@ import {
   isValidStatusTransition,
   isFinalStatus 
 } from '../../../utils/statusUtils';
-import { StatusBadge } from '../ui/StatusIndicators';
+import { StatusBadge } from './StatusIndicators';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 

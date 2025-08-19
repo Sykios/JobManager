@@ -1,7 +1,7 @@
 import React from 'react';
 import { StatusHistoryModel } from '../../../models/StatusHistory';
 import { getStatusConfig } from '../../../utils/statusUtils';
-import { StatusBadge } from '../ui/StatusIndicators';
+import { StatusBadge } from './StatusIndicators';
 
 interface StatusTimelineProps {
   history: StatusHistoryModel[];

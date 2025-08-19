@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ApplicationStatus } from '../../types';
-import { StatusBadge, StatusIndicator, StatusProgress } from '../components/ui/StatusIndicators';
+import { StatusBadge, StatusIndicator, StatusProgress } from '../components/applications/StatusIndicators';
 import { StatusChanger } from '../components/applications/StatusChanger';
 import { StatusTimeline, StatusTimelineStats } from '../components/applications/StatusTimeline';
 import { StatusHistoryModel } from '../../models/StatusHistory';
