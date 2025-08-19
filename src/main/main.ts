@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { setupDatabase, initializeDatabase, getDatabase } from '../database';
 
 let mainWindow: BrowserWindow;
@@ -61,6 +62,48 @@ const setupIpcHandlers = (): void => {
       return result;
     } catch (error) {
       console.error('Database query error:', error);
+      throw error;
+    }
+  });
+
+  // File operations
+  ipcMain.handle('file:open', async () => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [
+          { name: 'All Files', extensions: ['*'] },
+          { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt'] },
+          { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif'] }
+        ]
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        return result.filePaths[0];
+      }
+      return null;
+    } catch (error) {
+      console.error('File open error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('file:save', async (event, data: any) => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        filters: [
+          { name: 'JSON Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+      
+      if (!result.canceled && result.filePath) {
+        await fs.promises.writeFile(result.filePath, JSON.stringify(data, null, 2));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('File save error:', error);
       throw error;
     }
   });

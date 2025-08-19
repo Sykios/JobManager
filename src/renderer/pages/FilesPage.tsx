@@ -32,14 +32,12 @@ const FilesPage: React.FC = () => {
   const handleFileDownload = async (file: FileModel) => {
     if (!fileService || !file.id) return;
     try {
-      const buffer = await fileService.getFileBuffer(file.id);
-      // Convert buffer to Uint8Array for blob creation
-      const uint8Array = new Uint8Array(buffer);
-      const blob = new Blob([uint8Array], { type: file.mime_type });
+      const { buffer, filename, mimeType } = await fileService.downloadFile(file.id);
+      const blob = new Blob([buffer], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = file.filename;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -53,7 +51,7 @@ const FilesPage: React.FC = () => {
   const handleFileDelete = async (file: FileModel) => {
     if (!fileService || !file.id) return;
     try {
-      await fileService.delete(file.id);
+      await fileService.deleteFile(file.id);
       setFiles(prevFiles => prevFiles.filter(f => f.id !== file.id));
     } catch (err) {
       console.error('Error deleting file:', err);

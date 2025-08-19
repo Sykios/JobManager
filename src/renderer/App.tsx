@@ -4,9 +4,10 @@ import { Dashboard } from './pages/Dashboard';
 import { Applications } from './pages/Applications';
 import { NewApplication } from './pages/NewApplication';
 import { ContactsPage } from './pages/Contacts';
-// import FilesPage from './pages/FilesPage'; // Temporarily deactivated
+import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DatabaseProvider } from './context/ApplicationContext';
+import { FileServiceProvider } from './context/FileServiceContext';
 
 export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
 
@@ -64,7 +65,22 @@ const App: React.FC = () => {
           </ErrorBoundary>
         );
         case 'files':
-            return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Dateiverwaltung</h1><p className="text-gray-600 mt-2">Temporarily deactivated - Coming soon...</p></div>;
+          return (
+            <ErrorBoundary
+              onError={handleError}
+              fallback={
+                <div className="error-page">
+                  <h1>Fehler auf der Dateiseite</h1>
+                  <p>Es gab ein Problem beim Laden der Dateiseite.</p>
+                  <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                    Zurück zum Dashboard
+                  </button>
+                </div>
+              }
+            >
+              <FilesPage />
+            </ErrorBoundary>
+          );
       case 'calendar':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kalender</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'reminders':
@@ -141,9 +157,11 @@ const App: React.FC = () => {
       }
     >
       <DatabaseProvider>
-        <Layout currentPage={currentPage} onPageChange={handlePageChange}>
-          {renderCurrentPage()}
-        </Layout>
+        <FileServiceProvider>
+          <Layout currentPage={currentPage} onPageChange={handlePageChange}>
+            {renderCurrentPage()}
+          </Layout>
+        </FileServiceProvider>
       </DatabaseProvider>
     </ErrorBoundary>
   );

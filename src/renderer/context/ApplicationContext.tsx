@@ -1,15 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Database } from 'sqlite';
-import sqlite3 from 'sqlite3';
-import { ApplicationService } from '../../services/ApplicationService';
-import { ContactService } from '../../services/ContactService';
-import { FileService } from '../../services/FileService';
+import React, { createContext, useContext, ReactNode } from 'react';
 
 interface DatabaseContextType {
-  db: Database | null;
-  applicationService: ApplicationService | null;
-  contactService: ContactService | null;
-  fileService: FileService | null;
+  // Database operations using IPC
+  executeQuery: (query: string, params?: any[]) => Promise<any>;
+  queryDatabase: (query: string, params?: any[]) => Promise<any>;
   isLoading: boolean;
   error: string | null;
 }
@@ -17,50 +11,21 @@ interface DatabaseContextType {
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [db, setDb] = useState<Database | null>(null);
-  const [applicationService, setApplicationService] = useState<ApplicationService | null>(null);
-  const [contactService, setContactService] = useState<ContactService | null>(null);
-  const [fileService, setFileService] = useState<FileService | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use IPC for all database operations
+  const executeQuery = async (query: string, params?: any[]) => {
+    return window.electronAPI.executeQuery(query, params);
+  };
 
-  useEffect(() => {
-    const initializeDatabase = async () => {
-      try {
-        const { open } = await import('sqlite');
-        const database = await open({
-          filename: './jobmanager.db',
-          driver: sqlite3.Database,
-        });
+  const queryDatabase = async (query: string, params?: any[]) => {
+    return window.electronAPI.queryDatabase(query, params);
+  };
 
-        const appService = new ApplicationService(database);
-        await appService.initializeTable();
-
-        const conService = new ContactService(database);
-        await conService.initializeTable();
-
-        const fService = new FileService(database);
-        await fService.initializeTable();
-
-        setDb(database);
-        setApplicationService(appService);
-        setContactService(conService);
-        setFileService(fService);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to initialize database');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeDatabase();
-
-    return () => {
-      db?.close();
-    };
-  }, []);
-
-  const value = { db, applicationService, contactService, fileService, isLoading, error };
+  const value = { 
+    executeQuery,
+    queryDatabase,
+    isLoading: false, // No loading state needed since database is initialized in main process
+    error: null 
+  };
 
   return (
     <DatabaseContext.Provider value={value}>
