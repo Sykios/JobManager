@@ -24,7 +24,7 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 
 - [✓] **Database Schema**
   - [✓] Applications Tabelle erstellen
-  - [✓] Companies Tabelle erstellen
+  - [✓] Companies Tabelle erstellen (mit vollständiger Integration)
   - [✓] Contacts Tabelle erstellen
   - [✓] FileAttachments Tabelle erstellen
   - [✓] Reminders Tabelle erstellen
@@ -38,6 +38,7 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Badge Component
   - [✓] Loading Component
   - [✓] ContactSelector Component
+  - [✓] CompanySelector Component
   - [✓] ErrorBoundary Component
   - [🚧] FileUpload Component
 
@@ -54,6 +55,7 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] ApplicationForm Component
   - [✓] Form validation implementieren
   - [✓] ContactSelector integration
+  - [✓] CompanySelector integration
   - [🚧] File Upload Component integration
   - [✓] Form state management
 
@@ -68,6 +70,7 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Error handling implementieren
   - [✓] Success feedback
   - [✓] Contact selection functionality
+  - [✓] Company selection functionality
 
 ### 📋 Feature 2: Bewerbungen anzeigen
 - [✓] **Components**
@@ -105,8 +108,10 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 - [✓] **Filter System**
   - [✓] Filter by status
   - [✓] Filter by company
+  - [✓] Filter by contact
   - [✓] Filter by date range
   - [✓] Advanced filter options
+  - [✓] Company-specific search and filtering
 
 ### 👥 Feature 5: Kontakte verwalten
 - [✓] **Contact Management**
@@ -123,7 +128,31 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Integration with ApplicationForm
   - [✓] Error boundary implementation for stability
 
-### 📁 Feature 6: File Management
+### 🏢 Feature 6: Unternehmen verwalten
+- [✓] **Company Management**
+  - [✓] Company Model und Service bereits implementiert
+  - [✓] Companies Page mit vollständiger CRUD-Funktionalität
+  - [✓] CompanyForm für Erstellen/Bearbeiten von Unternehmen
+  - [✓] Company-Application relationships über foreign keys
+
+- [✓] **Advanced Company Features**
+  - [✓] CompanySelector Component mit dropdown interface
+  - [✓] Modal-basierte Unternehmenserstellung ohne Navigation
+  - [✓] Unternehmens-Suche und Filter (Name, Branche, Standort)
+  - [✓] Auto-Auswahl von neu erstellten Unternehmen
+  - [✓] Integration mit ApplicationForm
+  - [✓] Statistics Dashboard (Anzahl Unternehmen, Branchen-Breakdown)
+
+- [✓] **Company Page Features**
+  - [✓] Vollständige Unternehmensliste mit Paginierung
+  - [✓] Duplikate-Erkennung und Management
+  - [✓] CSV Export Funktionalität
+  - [✓] Responsive Design mit professioneller UI
+  - [✓] Real-time Suchfilterung
+  - [✓] Unternehmensinformationen (Website, Branche, Standort, Größe)
+  - [✓] Error boundary implementation für Stabilität
+
+### 📁 Feature 7: File Management
 - [🚧] **File System Integration in Applications**
   - [ ] File upload component for application creation
   - [ ] CV file attachment support
@@ -138,7 +167,7 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [ ] Bulk file operations
   - [ ] File search and filtering
 
-### ⏰ Feature 7: Fristen & Erinnerungen
+### ⏰ Feature 8: Fristen & Erinnerungen
 - [ ] **Reminder System**
   - [ ] Reminder Model
   - [ ] Calendar Page
