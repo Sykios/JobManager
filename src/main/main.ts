@@ -3,6 +3,18 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { setupDatabase, initializeDatabase, getDatabase } from '../database';
 
+// Enable live reload for Electron in development
+if (process.env.NODE_ENV === 'development') {
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, '../../node_modules/.bin/electron'),
+      hardResetMethod: 'exit'
+    });
+  } catch (e) {
+    console.log('Electron reload not available in development mode');
+  }
+}
+
 let mainWindow: BrowserWindow;
 
 const createWindow = (): void => {
