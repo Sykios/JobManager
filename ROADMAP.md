@@ -37,9 +37,11 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Card Component
   - [✓] Badge Component
   - [✓] Loading Component
-  - [ ] Modal Component
+  - [✓] ContactSelector Component
+  - [✓] ErrorBoundary Component
+  - [🚧] FileUpload Component
 
-- [ ] **Layout Structure**
+- [✓] **Layout Structure**
   - [✓] Main Layout Component
   - [✓] Navigation Component
   - [✓] Header Component
@@ -51,19 +53,21 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 - [✓] **Frontend**
   - [✓] ApplicationForm Component
   - [✓] Form validation implementieren
-  - [ ] File Upload Component
+  - [✓] ContactSelector integration
+  - [🚧] File Upload Component integration
   - [✓] Form state management
 
 - [✓] **Backend Logic**
   - [✓] Application Model erstellen
   - [✓] ApplicationService für CRUD operations
-  - [ ] File handling service
+  - [🚧] File handling service integration
   - [✓] Data validation
 
 - [✓] **Integration**
   - [✓] Frontend mit Backend verbinden
   - [✓] Error handling implementieren
   - [✓] Success feedback
+  - [✓] Contact selection functionality
 
 ### 📋 Feature 2: Bewerbungen anzeigen
 - [✓] **Components**
@@ -111,12 +115,28 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Add/Edit Contact forms
   - [✓] Contact-Application relationships
 
+- [✓] **Application Integration**
+  - [✓] ContactSelector Component with dropdown interface
+  - [✓] Modal-based contact creation without navigation
+  - [✓] Contact search and filtering capabilities
+  - [✓] Auto-selection of newly created contacts
+  - [✓] Integration with ApplicationForm
+  - [✓] Error boundary implementation for stability
+
 ### 📁 Feature 6: File Management
-- [ ] **File System**
-  - [ ] Local file storage
-  - [ ] File upload/download
-  - [ ] File preview funktionen
-  - [ ] File organization
+- [🚧] **File System Integration in Applications**
+  - [ ] File upload component for application creation
+  - [ ] CV file attachment support
+  - [ ] Application letter/cover letter file support
+  - [ ] Additional files section
+  - [ ] File preview functionality
+  - [ ] File management integration in ApplicationForm
+
+- [ ] **Advanced File System**
+  - [ ] Local file storage organization
+  - [ ] File upload/download for existing applications
+  - [ ] Bulk file operations
+  - [ ] File search and filtering
 
 ### ⏰ Feature 7: Fristen & Erinnerungen
 - [ ] **Reminder System**
