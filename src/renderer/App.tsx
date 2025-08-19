@@ -3,6 +3,7 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
+import { CompaniesPage } from './pages/Companies';
 import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DatabaseProvider } from './context/ApplicationContext';
@@ -68,7 +69,22 @@ const App: React.FC = () => {
           </ErrorBoundary>
         );
       case 'companies':
-        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Unternehmen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler auf der Unternehmensseite</h1>
+                <p>Es gab ein Problem beim Laden der Unternehmensseite.</p>
+                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                  Zurück zum Dashboard
+                </button>
+              </div>
+            }
+          >
+            <CompaniesPage />
+          </ErrorBoundary>
+        );
       case 'contacts':
         return (
           <ErrorBoundary
