@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { ContactModel } from '../models/Contact';
 import { ContactService } from '../services/ContactService';
 import { ContactCard } from './ContactCard';
+import { ContactForm } from './ContactForm';
+
+interface ContactSelectorProps {
+  contactService: ContactService;
+  selectedContactId?: number;
+  onSelect: (contact: ContactModel | null) => void;
+  onCreateNew?: () => void;
+  companyId?: number;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}
 
 interface ContactSelectorProps {
   contactService: ContactService;
@@ -28,7 +40,9 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
   const [filteredContacts, setFilteredContacts] = useState<ContactModel[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactModel | null>(null);
 
   // Load contacts
@@ -54,6 +68,17 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
     loadContacts();
   }, [contactService, companyId, selectedContactId]);
+
+  // Reload contacts when a new contact is created
+  const reloadContacts = async () => {
+    try {
+      const filters = companyId ? { company_id: companyId } : {};
+      const contactsData = await contactService.getAll(filters);
+      setContacts(contactsData);
+    } catch (error) {
+      console.error('Error reloading contacts:', error);
+    }
+  };
 
   // Filter contacts based on search
   useEffect(() => {
@@ -86,9 +111,61 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
   const handleCreateNew = () => {
     setIsOpen(false);
-    if (onCreateNew) {
-      onCreateNew();
+    setShowCreateForm(true);
+  };
+
+  const handleSaveNewContact = async (contactData: any) => {
+    try {
+      setSaving(true);
+      
+      // Create contact via IPC
+      const now = new Date().toISOString();
+      const result = await window.electronAPI.executeQuery(
+        `INSERT INTO contacts (first_name, last_name, email, phone, position, linkedin_url, notes, company_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          contactData.first_name,
+          contactData.last_name || null,
+          contactData.email || null,
+          contactData.phone || null,
+          contactData.position || null,
+          contactData.linkedin_url || null,
+          contactData.notes || null,
+          contactData.company_id || null,
+          now,
+          now
+        ]
+      );
+      
+      // Get the newly created contact
+      const newContactResult = await window.electronAPI.queryDatabase(
+        'SELECT * FROM contacts WHERE id = ?',
+        [result.lastID]
+      );
+      
+      if (newContactResult.length > 0) {
+        const newContact = ContactModel.fromJSON(newContactResult[0]);
+        
+        // Reload contacts list
+        await reloadContacts();
+        
+        // Auto-select the newly created contact
+        setSelectedContact(newContact);
+        onSelect(newContact);
+        
+        // Close the form
+        setShowCreateForm(false);
+      }
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      throw error; // Re-throw to prevent form from closing
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const handleCancelCreateForm = () => {
+    setShowCreateForm(false);
   };
 
   return (
@@ -150,15 +227,13 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
               />
             </div>
             <div className="dropdown-actions">
-              {onCreateNew && (
-                <button
-                  type="button"
-                  onClick={handleCreateNew}
-                  className="create-new-btn"
-                >
-                  ➕ Neuen Kontakt erstellen
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="create-new-btn"
+              >
+                ➕ Neuen Kontakt erstellen
+              </button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -198,17 +273,30 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
                 <span className="empty-text">
                   {searchQuery ? 'Keine Kontakte gefunden' : 'Keine Kontakte verfügbar'}
                 </span>
-                {onCreateNew && (
-                  <button
-                    type="button"
-                    onClick={handleCreateNew}
-                    className="create-first-btn"
-                  >
-                    Ersten Kontakt erstellen
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleCreateNew}
+                  className="create-first-btn"
+                >
+                  Ersten Kontakt erstellen
+                </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Contact Creation Modal */}
+      {showCreateForm && (
+        <div className="contact-creation-modal">
+          <div className="modal-overlay" onClick={handleCancelCreateForm}></div>
+          <div className="modal-content">
+            <ContactForm
+              companyId={companyId}
+              onSave={handleSaveNewContact}
+              onCancel={handleCancelCreateForm}
+              isLoading={saving}
+            />
           </div>
         </div>
       )}
@@ -469,6 +557,42 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
           background: #2563eb;
         }
 
+        /* Contact Creation Modal */
+        .contact-creation-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 2000;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 20px;
+        }
+
+        .modal-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          cursor: pointer;
+        }
+
+        .modal-content {
+          position: relative;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+          max-width: 600px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          z-index: 1;
+        }
+
         @media (max-width: 768px) {
           .selector-dropdown {
             position: fixed;
@@ -488,6 +612,12 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
           .create-new-btn {
             margin-bottom: 8px;
+          }
+
+          .modal-content {
+            margin: 10px;
+            max-width: none;
+            width: calc(100vw - 20px);
           }
         }
       `}</style>
