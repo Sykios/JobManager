@@ -67,18 +67,22 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     )
   `);
 
-  // File attachments table
+  // Files table - stores file attachments with blob data
   await db.exec(`
-    CREATE TABLE IF NOT EXISTS file_attachments (
+    CREATE TABLE IF NOT EXISTS files (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       application_id INTEGER,
-      file_name TEXT NOT NULL,
-      file_path TEXT NOT NULL,
-      file_type TEXT NOT NULL,
-      file_size INTEGER,
-      category TEXT CHECK(category IN ('resume', 'cover_letter', 'portfolio', 'certificate', 'other')),
+      filename TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      file_path TEXT,
+      size INTEGER NOT NULL,
+      mime_type TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'other')),
       description TEXT,
+      data BLOB,
+      upload_date DATETIME NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE
     )
   `);
@@ -119,6 +123,8 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
   await db.exec('CREATE INDEX IF NOT EXISTS idx_applications_date ON applications(application_date)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_reminders_date ON reminders(reminder_date)');
   await db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_company ON contacts(company_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_files_application ON files(application_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_files_upload_date ON files(upload_date)');
 
   // Create triggers for updated_at timestamps
   await db.exec(`
@@ -153,6 +159,14 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     END
   `);
 
+  await db.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_files_updated_at 
+    AFTER UPDATE ON files
+    BEGIN 
+      UPDATE files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    END
+  `);
+
   // Trigger to log status changes
   await db.exec(`
     CREATE TRIGGER IF NOT EXISTS log_status_changes 
@@ -172,12 +186,15 @@ export async function down(db: Database<sqlite3.Database, sqlite3.Statement>): P
 
   // Drop triggers first
   await db.exec('DROP TRIGGER IF EXISTS log_status_changes');
+  await db.exec('DROP TRIGGER IF EXISTS update_files_updated_at');
   await db.exec('DROP TRIGGER IF EXISTS update_reminders_updated_at');
   await db.exec('DROP TRIGGER IF EXISTS update_applications_updated_at');
   await db.exec('DROP TRIGGER IF EXISTS update_contacts_updated_at');
   await db.exec('DROP TRIGGER IF EXISTS update_companies_updated_at');
 
   // Drop indexes
+  await db.exec('DROP INDEX IF EXISTS idx_files_upload_date');
+  await db.exec('DROP INDEX IF EXISTS idx_files_application');
   await db.exec('DROP INDEX IF EXISTS idx_contacts_company');
   await db.exec('DROP INDEX IF EXISTS idx_reminders_date');
   await db.exec('DROP INDEX IF EXISTS idx_applications_date');
@@ -187,6 +204,7 @@ export async function down(db: Database<sqlite3.Database, sqlite3.Statement>): P
   // Drop tables in reverse order (respecting foreign keys)
   await db.exec('DROP TABLE IF EXISTS status_history');
   await db.exec('DROP TABLE IF EXISTS reminders');
+  await db.exec('DROP TABLE IF EXISTS files');
   await db.exec('DROP TABLE IF EXISTS file_attachments');
   await db.exec('DROP TABLE IF EXISTS applications');
   await db.exec('DROP TABLE IF EXISTS contacts');
