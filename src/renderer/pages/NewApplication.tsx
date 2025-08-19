@@ -62,7 +62,6 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
       }, 2000);
 
     } catch (error) {
-      console.error('Error creating application:', error);
       setError(
         error instanceof Error 
           ? error.message 

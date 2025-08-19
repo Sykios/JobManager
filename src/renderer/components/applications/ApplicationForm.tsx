@@ -3,7 +3,9 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
 import { Card, CardHeader, CardBody } from '../ui/Card';
+import { ContactSelector } from '../ui/ContactSelector';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
+import { ContactModel } from '../../../models/Contact';
 import { WorkType, Priority } from '../../../types';
 
 export interface ApplicationFormProps {
@@ -80,6 +82,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
+  const [selectedContact, setSelectedContact] = useState<ContactModel | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -153,6 +156,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }
   };
 
+  const handleContactSelect = (contact: ContactModel | null) => {
+    setSelectedContact(contact);
+    setFormData(prev => ({
+      ...prev,
+      contact_id: contact?.id,
+    }));
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
@@ -191,6 +202,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
               options={WORK_TYPE_OPTIONS}
               placeholder="Wählen Sie einen Arbeitstyp"
               fullWidth
+            />
+          </div>
+          
+          <div className="mt-4">
+            <ContactSelector
+              selectedContactId={formData.contact_id}
+              onContactSelect={handleContactSelect}
+              placeholder="Ansprechpartner auswählen (optional)..."
             />
           </div>
           
