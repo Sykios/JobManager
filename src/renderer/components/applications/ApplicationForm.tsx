@@ -4,10 +4,11 @@ import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
 import { Card, CardHeader, CardBody } from '../ui/Card';
 import { ContactSelector } from '../contacts';
+import { CompanySelector } from '../companies';
 import { ApplicationFileUpload } from '../files/ApplicationFileUpload';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
 import { ContactModel } from '../../../models/Contact';
-import { WorkType, Priority } from '../../../types';
+import { Company, WorkType, Priority } from '../../../types';
 
 export interface ApplicationFormProps {
   initialData?: Partial<ApplicationCreateData>;
@@ -88,6 +89,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [selectedContact, setSelectedContact] = useState<ContactModel | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [applicationFiles, setApplicationFiles] = useState<{
     cv?: { file: File; description?: string };
     coverLetter?: { file: File; description?: string };
@@ -95,6 +97,46 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
   }>({
     additionalFiles: []
   });
+
+  // Initialize company and contact from initialData
+  useEffect(() => {
+    const initializeData = async () => {
+      if (initialData.company_id) {
+        try {
+          // Query company directly via database context
+          const companies = await window.electronAPI.queryDatabase(
+            'SELECT * FROM companies WHERE id = ?', 
+            [initialData.company_id]
+          );
+          if (companies && companies.length > 0) {
+            setSelectedCompany(companies[0]);
+          }
+        } catch (error) {
+          console.error('Error loading company:', error);
+        }
+      }
+
+      if (initialData.contact_id) {
+        try {
+          // Query contact directly via database context
+          const contacts = await window.electronAPI.queryDatabase(
+            'SELECT * FROM contacts WHERE id = ?', 
+            [initialData.contact_id]
+          );
+          if (contacts && contacts.length > 0) {
+            // Create ContactModel instance
+            const { ContactModel } = await import('../../../models/Contact');
+            const contact = new ContactModel(contacts[0]);
+            setSelectedContact(contact);
+          }
+        } catch (error) {
+          console.error('Error loading contact:', error);
+        }
+      }
+    };
+
+    initializeData();
+  }, [initialData.company_id, initialData.contact_id]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -177,6 +219,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }));
   };
 
+  const handleCompanySelect = (company: Company | null) => {
+    setSelectedCompany(company);
+    setFormData(prev => ({
+      ...prev,
+      company_id: company?.id,
+    }));
+  };
+
   const handleFilesChange = (files: {
     cv?: { file: File; description?: string };
     coverLetter?: { file: File; description?: string };
@@ -223,6 +273,14 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
               options={WORK_TYPE_OPTIONS}
               placeholder="Wählen Sie einen Arbeitstyp"
               fullWidth
+            />
+          </div>
+          
+          <div className="mt-4">
+            <CompanySelector
+              selectedCompanyId={selectedCompany?.id}
+              onCompanySelect={handleCompanySelect}
+              placeholder="Unternehmen auswählen oder erstellen..."
             />
           </div>
           
