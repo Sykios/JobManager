@@ -3,6 +3,7 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Applications } from './pages/Applications';
 import { NewApplication } from './pages/NewApplication';
+import { ContactsPage } from './pages/Contacts';
 
 export type PageType = 'dashboard' | 'applications' | 'new-application' | 'companies' | 'contacts' | 'calendar' | 'reminders' | 'settings';
 
@@ -20,7 +21,9 @@ const App: React.FC = () => {
       case 'companies':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Unternehmen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'contacts':
-        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kontakte</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+        return (
+          <ContactsPage />
+        );
       case 'calendar':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kalender</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'reminders':
