@@ -15,33 +15,16 @@ export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
-    
-    console.log('ErrorBoundary: Component constructed');
   }
 
   static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI
-    console.log('ErrorBoundary: getDerivedStateFromError called with error:', error);
-    console.error('ErrorBoundary: Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
+    console.error('ErrorBoundary caught an error:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.log('ErrorBoundary: componentDidCatch called');
-    console.error('ErrorBoundary caught an error:', error);
-    console.error('ErrorBoundary error info:', errorInfo);
-    console.error('ErrorBoundary component stack:', errorInfo.componentStack);
-    console.error('ErrorBoundary error stack:', error.stack);
-    
-    // Try to get more context about the error
-    console.log('ErrorBoundary: Error occurred at:', new Date().toISOString());
-    console.log('ErrorBoundary: Current URL:', window.location.href);
-    console.log('ErrorBoundary: User agent:', navigator.userAgent);
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     
     // Call the onError callback if provided
     if (this.props.onError) {
@@ -54,16 +37,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidMount() {
-    console.log('ErrorBoundary: Component mounted successfully');
-    
     // Add global error listeners to catch errors that might escape React
     window.addEventListener('error', this.handleGlobalError);
     window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
   }
 
   componentWillUnmount() {
-    console.log('ErrorBoundary: Component unmounting');
-    
     // Clean up global error listeners
     window.removeEventListener('error', this.handleGlobalError);
     window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
@@ -103,8 +82,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      console.log('ErrorBoundary: Rendering error fallback UI');
-      
       // Render fallback UI or the provided fallback
       if (this.props.fallback) {
         return this.props.fallback;
@@ -129,7 +106,6 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
             <button
               onClick={() => {
-                console.log('ErrorBoundary: Retry button clicked');
                 this.setState({ hasError: false, error: undefined });
               }}
               className="retry-button"
@@ -218,7 +194,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    console.log('ErrorBoundary: Rendering children normally');
     return this.props.children;
   }
 }
