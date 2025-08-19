@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ContactModel } from '../../../models/Contact';
+import { Contact } from '../../../types';
+import { ContactCreateData, ContactUpdateData } from '../../../services/ContactService';
 import { ContactForm } from './ContactForm';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 
@@ -131,133 +133,58 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
     setSearchQuery('');
   };
 
-  const handleSaveNewContact = async (contactData: any) => {
-    // Add window-level error tracking for this operation
-    const originalOnError = window.onerror;
-    const originalOnUnhandledRejection = window.onunhandledrejection;
-    
-    window.onerror = (message, source, lineno, colno, error) => {
-      console.error('ContactSelector: Window error during contact creation:', {
-        message, source, lineno, colno, error
-      });
-      if (originalOnError) originalOnError(message, source, lineno, colno, error);
-      return false;
-    };
-    
-    window.onunhandledrejection = (event) => {
-      console.error('ContactSelector: Unhandled rejection during contact creation:', event.reason);
-      if (originalOnUnhandledRejection) originalOnUnhandledRejection.call(window, event);
-    };
-    
+  const handleSaveNewContact = async (contactData: ContactCreateData | ContactUpdateData) => {
     try {
       setSaving(true);
       
-      if (!ContactModel) {
-        throw new Error('ContactModel is not imported or undefined');
-      }
-      
-      try {
-        // Test with minimal data first
-        const minimalTest = new ContactModel({ first_name: 'Test' });
-        
-        // Test with actual data
-        const testModel = new ContactModel(contactData);
-        
-        // Test validation immediately
-        const validationResult = testModel.validate();
-        
-      } catch (constructorError) {
-        console.error('ContactSelector: ContactModel constructor FAILED:', constructorError);
-        throw new Error(`ContactModel constructor failed: ${constructorError}`);
-      }
-      
-      // Normalize empty strings to null for validation
+      // Normalize empty strings to undefined for consistency with the Contact type
       const normalizedData = {
         ...contactData,
-        last_name: contactData.last_name?.trim() || null,
-        email: contactData.email?.trim() || null,
-        phone: contactData.phone?.trim() || null,
-        position: contactData.position?.trim() || null,
-        linkedin_url: contactData.linkedin_url?.trim() || null,
-        notes: contactData.notes?.trim() || null,
-        company_id: contactData.company_id || null  // Ensure undefined becomes null
+        last_name: contactData.last_name?.trim() || undefined,
+        email: contactData.email?.trim() || undefined,
+        phone: contactData.phone?.trim() || undefined,
+        position: contactData.position?.trim() || undefined,
+        linkedin_url: contactData.linkedin_url?.trim() || undefined,
+        notes: contactData.notes?.trim() || undefined,
+        company_id: contactData.company_id || undefined
       };
+
+      // Validate the contact data
+      const testContact = new ContactModel(normalizedData as Contact);
+      const validation = testContact.validate();
       
-      // List all companies for debugging
-      try {
-        const allCompanies = await window.electronAPI.queryDatabase('SELECT * FROM companies', []);
-        
-        if (allCompanies.length === 0) {
-          // No companies exist - this is expected for now, company_id will be set to null
-        }
-      } catch (companyError) {
-        console.error('ContactSelector: Error querying companies:', companyError);
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
       }
-      
-      // Validate the contact data before sending to database
-      try {
-        const testContact = new ContactModel(normalizedData);
-        const validation = testContact.validate();
-        
-        if (!validation.isValid) {
-          throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
-        }
-        
-      } catch (validationError) {
-        console.error('ContactSelector: Validation error:', validationError);
-        const error = validationError instanceof Error ? validationError : new Error(String(validationError));
-        throw validationError;
-      }
-      
-      // Create contact via IPC
-      const now = new Date().toISOString();
-      
-      // Log the exact values being inserted
-      const insertValues = [
-        normalizedData.first_name,
-        normalizedData.last_name,
-        normalizedData.email,
-        normalizedData.phone,
-        normalizedData.position,
-        normalizedData.linkedin_url,
-        normalizedData.notes,
-        normalizedData.company_id || null,
-        now,
-        now
-      ];
-      
+
       // Check if company_id is valid if provided
       if (normalizedData.company_id) {
-        try {
-          const companyCheck = await window.electronAPI.queryDatabase(
-            'SELECT id FROM companies WHERE id = ?',
-            [normalizedData.company_id]
-          );
-          
-          if (companyCheck.length === 0) {
-            console.error('ContactSelector: Invalid company_id - company does not exist');
-            throw new Error(`Company with ID ${normalizedData.company_id} does not exist`);
-          }
-        } catch (companyCheckError) {
-          console.error('ContactSelector: Error during company check:', companyCheckError);
-          const errorMessage = companyCheckError instanceof Error ? companyCheckError.message : String(companyCheckError);
-          throw new Error(`Failed to validate company: ${errorMessage}`);
+        const companyCheck = await window.electronAPI.queryDatabase(
+          'SELECT id FROM companies WHERE id = ?',
+          [normalizedData.company_id]
+        );
+        
+        if (companyCheck.length === 0) {
+          throw new Error(`Company with ID ${normalizedData.company_id} does not exist`);
         }
       }
-      
-      let result;
-      try {
-        result = await window.electronAPI.executeQuery(
-          `INSERT INTO contacts (first_name, last_name, email, phone, position, linkedin_url, notes, company_id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          insertValues
-        );
-      } catch (insertError) {
-        console.error('ContactSelector: INSERT query failed:', insertError);
-        const error = insertError instanceof Error ? insertError : new Error(String(insertError));
-        throw new Error(`Database insert failed: ${error.message}`);
-      }
-      
+
+      // Create contact via IPC
+      const result = await window.electronAPI.executeQuery(
+        `INSERT INTO contacts (first_name, last_name, email, phone, position, linkedin_url, notes, company_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        [
+          normalizedData.first_name,
+          normalizedData.last_name || null,
+          normalizedData.email || null,
+          normalizedData.phone || null,
+          normalizedData.position || null,
+          normalizedData.linkedin_url || null,
+          normalizedData.notes || null,
+          normalizedData.company_id || null
+        ]
+      );
+
       // Get the newly created contact
       const newContactResult = await window.electronAPI.queryDatabase(
         'SELECT * FROM contacts WHERE id = ?',
@@ -280,16 +207,10 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         throw new Error('Failed to retrieve newly created contact');
       }
     } catch (error) {
-      console.error('ContactSelector: Error creating contact:', error);
-      console.error('ContactSelector: Error stack:', (error as Error).stack);
-      // Don't close the form on error, let the ContactForm handle it
+      console.error('Error creating contact:', error);
       throw error; // Re-throw to prevent form from closing
     } finally {
       setSaving(false);
-      
-      // Restore original error handlers
-      window.onerror = originalOnError;
-      window.onunhandledrejection = originalOnUnhandledRejection;
     }
   };
 
