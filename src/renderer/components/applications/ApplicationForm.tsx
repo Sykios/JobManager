@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select, SelectOption } from '../ui/Select';
@@ -227,13 +227,13 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
     }));
   };
 
-  const handleFilesChange = (files: {
+  const handleFilesChange = useCallback((files: {
     cv?: { file: File; description?: string };
     coverLetter?: { file: File; description?: string };
     additionalFiles: { file: File; description?: string }[];
   }) => {
     setApplicationFiles(files);
-  };
+  }, []);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

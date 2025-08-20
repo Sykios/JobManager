@@ -66,6 +66,9 @@ export interface Application {
   benefits?: string;
   created_at: string;
   updated_at: string;
+  // Optional file metadata
+  fileCount?: number;
+  totalFileSize?: number;
 }
 
 // Status History Types

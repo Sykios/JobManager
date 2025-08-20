@@ -133,6 +133,22 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
             </div>
           )}
 
+          {application.fileCount !== undefined && application.fileCount > 0 && (
+            <div className="flex items-center text-sm text-gray-600">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {application.fileCount} {application.fileCount === 1 ? 'Datei' : 'Dateien'}
+              {application.totalFileSize && application.totalFileSize > 0 && (
+                <span className="text-xs text-gray-500 ml-1">
+                  ({application.totalFileSize < 1024 ? `${application.totalFileSize} B` :
+                    application.totalFileSize < 1024 * 1024 ? `${(application.totalFileSize / 1024).toFixed(1)} KB` :
+                    `${(application.totalFileSize / 1024 / 1024).toFixed(2)} MB`})
+                </span>
+              )}
+            </div>
+          )}
+
           {(application.application_date || application.deadline) && (
             <div className="space-y-1">
               {application.application_date && (

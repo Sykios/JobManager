@@ -51,6 +51,10 @@ const FilesPage: React.FC = () => {
   const handleFileDelete = async (file: FileModel) => {
     if (!fileService || !file.id) return;
     try {
+      // Show confirmation dialog
+      const confirmed = confirm(`Möchten Sie die Datei "${file.filename}" wirklich löschen?`);
+      if (!confirmed) return;
+
       await fileService.deleteFile(file.id);
       setFiles(prevFiles => prevFiles.filter(f => f.id !== file.id));
     } catch (err) {

@@ -241,14 +241,14 @@ export async function clearDemoData(db: Database<sqlite3.Database, sqlite3.State
   console.log('Clearing demo data...');
 
   await db.exec('DELETE FROM reminders');
-  await db.exec('DELETE FROM file_attachments');
+  await db.exec('DELETE FROM files');
   await db.exec('DELETE FROM status_history');
   await db.exec('DELETE FROM applications');
   await db.exec('DELETE FROM contacts');
   await db.exec('DELETE FROM companies');
 
   // Reset auto-increment counters
-  await db.exec('DELETE FROM sqlite_sequence WHERE name IN ("companies", "contacts", "applications", "reminders", "file_attachments", "status_history")');
+  await db.exec('DELETE FROM sqlite_sequence WHERE name IN ("companies", "contacts", "applications", "reminders", "files", "status_history")');
 
   console.log('Demo data cleared successfully');
 }

@@ -7,10 +7,14 @@ import { FileModel, FileType } from '../models/File';
 export interface FileCreateData {
   application_id?: number;
   filename: string;
-  type: FileType;
+  original_name?: string;
+  file_path?: string;
   size: number;
-  path?: string;
+  mime_type?: string;
+  type: FileType;
   description?: string;
+  data?: Uint8Array | Buffer;
+  upload_date?: string;
 }
 
 export interface FileUpdateData extends Partial<FileCreateData> {}
@@ -163,10 +167,13 @@ export class FileService {
       const fileData: FileCreateData = {
         application_id: applicationId,
         filename: originalFilename,
-        type: fileType,
+        original_name: originalFilename,
+        file_path: filePath,
         size: fileBuffer.length,
-        path: filePath,
-        description
+        mime_type: this.getMimeTypeFromExtension(originalFilename),
+        type: fileType,
+        description,
+        upload_date: new Date().toISOString()
       };
 
       return await this.create(fileData);
@@ -185,8 +192,8 @@ export class FileService {
   async create(data: FileCreateData): Promise<FileModel> {
     const fileModel = new FileModel({
       ...data,
-      mime_type: this.getMimeTypeFromExtension(data.filename),
-      upload_date: new Date().toISOString()
+      mime_type: data.mime_type || this.getMimeTypeFromExtension(data.filename),
+      upload_date: data.upload_date || new Date().toISOString()
     });
 
     const validation = fileModel.validate();
@@ -196,18 +203,21 @@ export class FileService {
 
     const query = `
       INSERT INTO files (
-        application_id, filename, type, size, upload_date, path, description
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        application_id, filename, original_name, file_path, size, mime_type, type, description, data, upload_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const result = await this.db.run(query, [
       data.application_id || null,
       data.filename,
-      data.type,
+      data.original_name || data.filename,
+      data.file_path || null,
       data.size,
-      fileModel.upload_date,
-      data.path || null,
-      data.description || null
+      data.mime_type || this.getMimeTypeFromExtension(data.filename),
+      data.type,
+      data.description || null,
+      data.data || null,
+      data.upload_date || fileModel.upload_date
     ]);
 
     if (!result.lastID) {
@@ -275,12 +285,12 @@ export class FileService {
       throw new Error(`Datei mit ID ${id} nicht gefunden`);
     }
 
-    // Delete physical file
-    if (file.path && fs.existsSync(file.path)) {
+    // Delete physical file if it exists
+    if (file.file_path && fs.existsSync(file.file_path)) {
       try {
-        await fs.promises.unlink(file.path);
+        await fs.promises.unlink(file.file_path);
       } catch (error) {
-        console.warn(`Warning: Could not delete file ${file.path}:`, error);
+        console.warn(`Warning: Could not delete file ${file.file_path}:`, error);
       }
     }
   }
@@ -380,11 +390,11 @@ export class FileService {
   async getFileBuffer(id: number): Promise<Buffer> {
     const file = await this.getById(id);
     
-    if (!file.path || !fs.existsSync(file.path)) {
+    if (!file.file_path || !fs.existsSync(file.file_path)) {
       throw new Error('Datei nicht auf dem Dateisystem gefunden');
     }
 
-    return fs.promises.readFile(file.path);
+    return fs.promises.readFile(file.file_path);
   }
 
   /**
@@ -448,7 +458,7 @@ export class FileService {
       const filesOnDisk = await fs.promises.readdir(this.uploadPath);
       const filesInDb = await this.getAll();
       const dbFilenames = filesInDb
-        .map(f => f.path ? path.basename(f.path) : null)
+        .map(f => f.file_path ? path.basename(f.file_path) : null)
         .filter(Boolean) as string[];
 
       for (const diskFile of filesOnDisk) {
@@ -480,13 +490,13 @@ export class FileService {
       const files = await this.getAll();
       
       for (const file of files) {
-        if (file.path && fs.existsSync(file.path)) {
-          const filename = path.basename(file.path);
+        if (file.file_path && fs.existsSync(file.file_path)) {
+          const filename = path.basename(file.file_path);
           const newFilePath = path.join(newPath, filename);
           
-          await fs.promises.copyFile(file.path, newFilePath);
-          await this.update(file.id!, { path: newFilePath });
-          await fs.promises.unlink(file.path);
+          await fs.promises.copyFile(file.file_path, newFilePath);
+          await this.update(file.id!, { file_path: newFilePath });
+          await fs.promises.unlink(file.file_path);
         }
       }
     } catch (error) {

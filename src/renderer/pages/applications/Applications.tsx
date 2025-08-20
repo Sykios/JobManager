@@ -22,9 +22,16 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
     setError(null);
 
     try {
+      // Load applications with file counts
       const query = `
-        SELECT * FROM applications 
-        ORDER BY created_at DESC
+        SELECT 
+          a.*,
+          COUNT(f.id) as fileCount,
+          COALESCE(SUM(f.size), 0) as totalFileSize
+        FROM applications a
+        LEFT JOIN files f ON a.id = f.application_id
+        GROUP BY a.id
+        ORDER BY a.created_at DESC
       `;
       
       const result = await window.electronAPI.queryDatabase(query);

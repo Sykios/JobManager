@@ -6,35 +6,47 @@ export interface FileModelProps {
   id?: number;
   application_id?: number;
   filename: string;
+  original_name?: string;
+  file_path?: string;
+  size: number;
   mime_type: string;
   type: FileType;
-  size: number;
-  upload_date: string;
-  path?: string;
   description?: string;
+  data?: Uint8Array | Buffer;
+  upload_date: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export class FileModel {
   id?: number;
   application_id?: number;
   filename: string;
+  original_name?: string;
+  file_path?: string;
+  size: number;
   mime_type: string;
   type: FileType;
-  size: number;
-  upload_date: string;
-  path?: string;
   description?: string;
+  data?: Uint8Array | Buffer;
+  upload_date: string;
+  created_at?: string;
+  updated_at?: string;
 
   constructor(props: FileModelProps) {
     this.id = props.id;
     this.application_id = props.application_id;
     this.filename = props.filename;
+    this.original_name = props.original_name;
+    this.file_path = props.file_path;
+    this.size = props.size;
     this.mime_type = props.mime_type;
     this.type = props.type;
-    this.size = props.size;
-    this.upload_date = props.upload_date;
-    this.path = props.path;
     this.description = props.description;
+    this.data = props.data;
+    this.upload_date = props.upload_date;
+    this.created_at = props.created_at;
+    this.updated_at = props.updated_at;
   }
 
   static fromJSON(json: any): FileModel {
@@ -42,12 +54,16 @@ export class FileModel {
       id: json.id,
       application_id: json.application_id,
       filename: json.filename,
+      original_name: json.original_name,
+      file_path: json.file_path,
+      size: json.size,
       mime_type: json.mime_type,
       type: json.type,
-      size: json.size,
-      upload_date: json.upload_date,
-      path: json.path,
       description: json.description,
+      data: json.data,
+      upload_date: json.upload_date,
+      created_at: json.created_at,
+      updated_at: json.updated_at,
     });
   }
 

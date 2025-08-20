@@ -57,21 +57,21 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
       ];
 
       const result = await window.electronAPI.executeQuery(query, params);
-      const applicationId = result.lastInsertRowid;
+      const applicationId = result.lastID;
 
       // Handle file uploads if any files are provided
       if (files && applicationId) {
         const filesToUpload: Array<{
           file: File;
           description: string;
-          category: 'cv' | 'cover_letter' | 'additional';
+          type: 'cv' | 'cover_letter' | 'additional';
         }> = [];
 
         if (files.cv) {
           filesToUpload.push({
             file: files.cv.file,
             description: files.cv.description || 'Lebenslauf',
-            category: 'cv'
+            type: 'cv'
           });
         }
 
@@ -79,7 +79,7 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
           filesToUpload.push({
             file: files.coverLetter.file,
             description: files.coverLetter.description || 'Anschreiben',
-            category: 'cover_letter'
+            type: 'cover_letter'
           });
         }
 
@@ -87,42 +87,76 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
           filesToUpload.push({
             file: fileData.file,
             description: fileData.description || fileData.file.name,
-            category: 'additional'
+            type: 'additional'
           });
         });
 
-        // Upload each file
+        // Upload each file using the new file upload API
         for (const fileData of filesToUpload) {
           try {
-            // Convert File to ArrayBuffer and then to Buffer-like object
+            // Convert File to ArrayBuffer
             const arrayBuffer = await fileData.file.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
             
-            // Save file to database
+            // Determine file type from extension
+            const getFileType = (filename: string) => {
+              const ext = filename.split('.').pop()?.toLowerCase();
+              switch (ext) {
+                case 'pdf': return 'pdf';
+                case 'doc':
+                case 'docx': return 'docx';
+                case 'txt': return 'txt';
+                case 'jpg':
+                case 'jpeg': return 'jpg';
+                case 'png': return 'png';
+                default: return 'other';
+              }
+            };
+            
+            const fileType = getFileType(fileData.file.name);
+            
+            // Upload file using the new API
+            const uploadResult = await window.electronAPI.uploadFile({
+              data: arrayBuffer,
+              filename: fileData.file.name,
+              applicationId: applicationId,
+              fileType: fileType,
+              description: fileData.description
+            });
+            
+            if (!uploadResult.success) {
+              throw new Error('Upload failed: success = false');
+            }
+            
+            // Save file metadata to database
             const fileQuery = `
-              INSERT INTO file_attachments (
-                filename, file_size, file_type, file_data, description,
-                uploaded_at, application_id, category
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO files (
+                application_id, filename, original_name, file_path, size, 
+                mime_type, type, description, upload_date
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             const fileParams = [
-              fileData.file.name,
-              fileData.file.size,
-              fileData.file.type || 'application/octet-stream',
-              uint8Array,
-              fileData.description,
-              new Date().toISOString(),
               applicationId,
-              fileData.category
+              uploadResult.filename,
+              uploadResult.originalName,
+              uploadResult.filePath,
+              uploadResult.size,
+              fileData.file.type || 'application/octet-stream',
+              fileType,
+              fileData.description,
+              new Date().toISOString()
             ];
 
-            await window.electronAPI.executeQuery(fileQuery, fileParams);
+            const fileResult = await window.electronAPI.executeQuery(fileQuery, fileParams);
           } catch (fileError) {
             console.error(`Error uploading file ${fileData.file.name}:`, fileError);
+            setError(`Fehler beim Hochladen der Datei ${fileData.file.name}: ${fileError}`);
             // Continue with other files even if one fails
           }
         }
+      } else if (files && !applicationId) {
+        console.error('Cannot upload files: applicationId is missing!', { applicationId, hasFiles: !!files });
+        setError('Fehler: Bewerbung wurde nicht korrekt erstellt. Dateien können nicht hochgeladen werden.');
       }
       
       setSuccess('Bewerbung erfolgreich erstellt!');

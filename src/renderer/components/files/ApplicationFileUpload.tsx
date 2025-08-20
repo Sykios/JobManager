@@ -53,19 +53,20 @@ export const ApplicationFileUpload: React.FC<ApplicationFileUploadProps> = ({
     return null;
   }, []);
 
-  // Update parent component when files change
-  const updateParent = useCallback(() => {
+  // Effect to notify parent when files change
+  React.useEffect(() => {
+    console.log('ApplicationFileUpload: Files changed', {
+      cv: cvFile ? `${cvFile.file.name} (${cvFile.file.size} bytes)` : null,
+      coverLetter: coverLetterFile ? `${coverLetterFile.file.name} (${coverLetterFile.file.size} bytes)` : null,
+      additionalFiles: additionalFiles.map(f => `${f.file.name} (${f.file.size} bytes)`)
+    });
+    
     onFilesChange({
       cv: cvFile,
       coverLetter: coverLetterFile,
       additionalFiles
     });
-  }, [cvFile, coverLetterFile, additionalFiles, onFilesChange]);
-
-  // Effect to notify parent when files change
-  React.useEffect(() => {
-    updateParent();
-  }, [updateParent]);
+  }, [cvFile, coverLetterFile, additionalFiles, onFilesChange]); // Include onFilesChange now that it's stable
 
   // Handle file selection
   const handleFileSelect = useCallback(async (
