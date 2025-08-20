@@ -153,19 +153,22 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
   - [✓] Error boundary implementation für Stabilität
 
 ### 📁 Feature 7: File Management
-- [🚧] **File System Integration in Applications**
-  - [ ] File upload component for application creation
-  - [ ] CV file attachment support
-  - [ ] Application letter/cover letter file support
-  - [ ] Additional files section
-  - [ ] File preview functionality
-  - [ ] File management integration in ApplicationForm
+- [✓] **File System Integration in Applications**
+  - [✓] File upload component for application creation
+  - [✓] CV file attachment support
+  - [✓] Application letter/cover letter file support
+  - [✓] Additional files section
+  - [✓] File preview functionality
+  - [✓] File management integration in ApplicationForm
+  - [✓] File count display in ApplicationCard
+  - [✓] File storage in database with proper schema
 
-- [ ] **Advanced File System**
-  - [ ] Local file storage organization
-  - [ ] File upload/download for existing applications
-  - [ ] Bulk file operations
-  - [ ] File search and filtering
+- [✓] **Advanced File System**
+  - [✓] Local file database storage organization
+  - [✓] File upload/download for applications
+  - [✓] File service integration
+  - [✓] File search and filtering in FilesPage
+  - [✓] File management in ApplicationDetail page
 
 ### ⏰ Feature 8: Fristen & Erinnerungen
 - [ ] **Reminder System**
