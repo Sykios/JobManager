@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ContactModel } from '../../../models/Contact';
 import { ContactCreateData, ContactUpdateData } from '../../../services/ContactService';
+import { Company } from '../../../types';
 
 interface ContactFormProps {
   contact?: ContactModel;
@@ -30,6 +31,32 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  // Load companies on component mount
+  useEffect(() => {
+    const loadCompanies = async () => {
+      setLoadingCompanies(true);
+      try {
+        // Get all companies via IPC using SQL query
+        const result = await window.electronAPI.queryDatabase(
+          'SELECT * FROM companies ORDER BY name ASC',
+          []
+        );
+        if (result) {
+          setCompanies(result);
+        }
+      } catch (error) {
+        console.error('Failed to load companies:', error);
+        setErrors(prev => ({ ...prev, companies: 'Fehler beim Laden der Unternehmen' }));
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    loadCompanies();
+  }, []);
 
   // Validate form data
   const validateForm = () => {
@@ -65,7 +92,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    let processedValue: any = value;
+    
+    // Handle company_id as number
+    if (field === 'company_id') {
+      processedValue = value === '' ? undefined : parseInt(value, 10);
+    }
+    
+    setFormData(prev => ({ ...prev, [field]: processedValue }));
     
     // Mark field as touched
     if (!touched[field]) {
@@ -162,6 +196,36 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           {errors.general}
         </div>
       )}
+
+      {errors.companies && (
+        <div className="error-banner">
+          {errors.companies}
+        </div>
+      )}
+
+      {/* Company Selection */}
+      <div className="form-group company-selection">
+        <label htmlFor="company_id">Unternehmen</label>
+        <select
+          id="company_id"
+          value={formData.company_id || ''}
+          onChange={(e) => handleInputChange('company_id', e.target.value)}
+          disabled={isLoading || loadingCompanies}
+          className="company-select"
+        >
+          <option value="">Kein Unternehmen ausgewählt</option>
+          {loadingCompanies ? (
+            <option disabled>Lade Unternehmen...</option>
+          ) : (
+            companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+                {company.location && ` (${company.location})`}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
 
       <div className="form-grid">
         {/* First Name */}
@@ -340,6 +404,10 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           flex-direction: column;
         }
 
+        .form-group.company-selection {
+          margin-bottom: 20px;
+        }
+
         .form-group.required label::after {
           content: ' *';
           color: #dc2626;
@@ -358,7 +426,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
         }
 
         .form-group input,
-        .form-group textarea {
+        .form-group textarea,
+        .form-group select {
           width: 100%;
           padding: 8px 12px;
           border: 1px solid #d1d5db;
@@ -369,20 +438,32 @@ export const ContactForm: React.FC<ContactFormProps> = ({
         }
 
         .form-group input:focus,
-        .form-group textarea:focus {
+        .form-group textarea:focus,
+        .form-group select:focus {
           outline: none;
           border-color: #3b82f6;
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .form-group input.error,
-        .form-group textarea.error {
+        .form-group textarea.error,
+        .form-group select.error {
           border-color: #dc2626;
         }
 
         .form-group input:disabled,
-        .form-group textarea:disabled {
+        .form-group textarea:disabled,
+        .form-group select:disabled {
           background-color: #f9fafb;
+          cursor: not-allowed;
+        }
+
+        .company-select {
+          background-color: white;
+          cursor: pointer;
+        }
+
+        .company-select:disabled {
           cursor: not-allowed;
         }
 
