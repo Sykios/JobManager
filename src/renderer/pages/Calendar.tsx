@@ -23,6 +23,13 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
   const [editingReminder, setEditingReminder] = useState<ReminderModel | null>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'agenda'>('month');
+  const [eventFilters, setEventFilters] = useState({
+    application: true,
+    deadline: true,
+    follow_up: true,
+    interview: true,
+    custom: true
+  });
   const [reminderForm, setReminderForm] = useState<ReminderFormData>({
     title: '',
     description: '',
@@ -198,6 +205,17 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
     setCurrentDate(newDate);
   };
 
+  const toggleEventFilter = (eventType: keyof typeof eventFilters) => {
+    setEventFilters(prev => ({
+      ...prev,
+      [eventType]: !prev[eventType]
+    }));
+  };
+
+  const getFilteredEvents = () => {
+    return events.filter(event => eventFilters[event.type as keyof typeof eventFilters]);
+  };
+
   const handleCreateReminder = async () => {
     try {
       const reminder = new ReminderModel(reminderForm);
@@ -293,7 +311,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
-      const dayEvents = events.filter(event => 
+      const dayEvents = getFilteredEvents().filter(event => 
         event.date === date.toISOString().split('T')[0]
       );
 
@@ -351,7 +369,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
   };
 
   const renderAgendaView = () => {
-    const sortedEvents = [...events].sort((a, b) => 
+    const sortedEvents = [...getFilteredEvents()].sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -497,6 +515,58 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
               Heute
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Event Filters */}
+      <div className="bg-white rounded-lg shadow-sm mb-4 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="text-sm font-medium text-gray-700">Termine anzeigen:</span>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={eventFilters.application}
+              onChange={() => toggleEventFilter('application')}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">Bewerbungen</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={eventFilters.deadline}
+              onChange={() => toggleEventFilter('deadline')}
+              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+            />
+            <span className="text-sm text-gray-700">Deadlines</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={eventFilters.follow_up}
+              onChange={() => toggleEventFilter('follow_up')}
+              className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+            />
+            <span className="text-sm text-gray-700">Nachfassen</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={eventFilters.interview}
+              onChange={() => toggleEventFilter('interview')}
+              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm text-gray-700">Interviews</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={eventFilters.custom}
+              onChange={() => toggleEventFilter('custom')}
+              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            <span className="text-sm text-gray-700">Sonstige</span>
+          </label>
         </div>
       </div>
 
