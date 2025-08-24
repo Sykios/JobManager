@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={handlePageChange} />;
       case 'applications':
         return <Applications onNavigate={handlePageChange} />;
       case 'new-application':
