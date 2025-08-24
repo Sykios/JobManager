@@ -82,6 +82,35 @@ export interface StatusHistory {
   created_by?: string;
 }
 
+// Reminder Types
+export type ReminderType = 'deadline' | 'follow_up' | 'interview' | 'custom';
+
+export interface Reminder {
+  id: number;
+  application_id?: number;
+  title: string;
+  description?: string;
+  reminder_date: string;
+  reminder_type: ReminderType;
+  is_completed: boolean;
+  notification_sent: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  type: 'application' | 'reminder' | 'deadline' | 'interview' | 'follow_up';
+  description?: string;
+  application_id?: number;
+  reminder_id?: number;
+  status?: ApplicationStatus;
+  company_name?: string;
+  position?: string;
+}
+
 // UI Types
 export interface NavItem {
   id: string;

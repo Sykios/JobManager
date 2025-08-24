@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
 import { CompaniesPage } from './pages/Companies';
+import { Calendar } from './pages/Calendar';
 import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DatabaseProvider } from './context/ApplicationContext';
@@ -120,7 +121,22 @@ const App: React.FC = () => {
             </ErrorBoundary>
           );
       case 'calendar':
-        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Kalender</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler auf der Kalenderseite</h1>
+                <p>Es gab ein Problem beim Laden des Kalenders.</p>
+                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                  Zurück zum Dashboard
+                </button>
+              </div>
+            }
+          >
+            <Calendar onNavigate={handlePageChange} />
+          </ErrorBoundary>
+        );
       case 'reminders':
         return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Erinnerungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
       case 'settings':
