@@ -180,6 +180,12 @@ Eine schrittweise Anleitung zur Entwicklung des JobManager Bewerbungstools.
 ## 🎨 Phase 3: UI/UX Enhancement
 
 ### 💅 Design Polish
+- [ ] **Feature Polish**
+  - [ ] Complete Detail & Edit Views
+  - [ ] Further enhance automation (status changes, ..)
+  - [ ] Enhance notifications further
+  - [ ] Other small tasks that were overlooked
+
 - [ ] **Visual Design**
   - [ ] Consistent color scheme
   - [ ] Typography system
