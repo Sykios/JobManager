@@ -5,7 +5,6 @@ interface NavigationItem {
   id: PageType;
   label: string;
   icon: React.ReactNode;
-  count?: number;
 }
 
 const navigationItems: NavigationItem[] = [
@@ -25,8 +24,7 @@ const navigationItems: NavigationItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6" />
       </svg>
-    ),
-    count: 12
+    )
   },
   {
     id: 'files',
@@ -44,8 +42,7 @@ const navigationItems: NavigationItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
-    ),
-    count: 5
+    )
   },
   {
     id: 'contacts',
@@ -54,8 +51,7 @@ const navigationItems: NavigationItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
       </svg>
-    ),
-    count: 8
+    )
   },
   {
     id: 'calendar',
@@ -73,8 +69,7 @@ const navigationItems: NavigationItem[] = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM9 13h6m-6-4h6m-6 8h6M3 9a2 2 0 012-2h1a1 1 0 001-1V4a2 2 0 012-2h6a2 2 0 012 2v2a1 1 0 001 1h1a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
       </svg>
-    ),
-    count: 3
+    )
   },
   {
     id: 'settings',
@@ -112,15 +107,6 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChang
                   {item.icon}
                 </span>
                 <span className="font-medium">{item.label}</span>
-                {item.count && (
-                  <span className={`ml-auto px-2 py-1 text-xs rounded-full ${
-                    currentPage === item.id
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {item.count}
-                  </span>
-                )}
               </button>
             </li>
           ))}
