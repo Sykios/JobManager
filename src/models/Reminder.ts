@@ -1,4 +1,4 @@
-import { Reminder, ReminderType } from '../types';
+import { Reminder, ReminderType, ReminderPriority, SyncStatus, RecurrencePattern } from '../types';
 
 export class ReminderModel implements Reminder {
   id: number;
@@ -11,6 +11,19 @@ export class ReminderModel implements Reminder {
   notification_sent: boolean;
   created_at: string;
   updated_at: string;
+  
+  // Enhanced fields
+  supabase_id?: string;
+  sync_status: SyncStatus;
+  email_notification_enabled: boolean;
+  notification_time: number;
+  last_synced_at?: string;
+  priority: ReminderPriority;
+  recurrence_pattern?: string;
+  auto_generated: boolean;
+  parent_reminder_id?: number;
+  snooze_until?: string;
+  completion_note?: string;
 
   constructor(data: Partial<Reminder> = {}) {
     this.id = data.id || 0;
@@ -23,6 +36,19 @@ export class ReminderModel implements Reminder {
     this.notification_sent = data.notification_sent || false;
     this.created_at = data.created_at || new Date().toISOString();
     this.updated_at = data.updated_at || new Date().toISOString();
+    
+    // Enhanced fields with defaults
+    this.supabase_id = data.supabase_id;
+    this.sync_status = data.sync_status || 'pending';
+    this.email_notification_enabled = data.email_notification_enabled !== undefined ? data.email_notification_enabled : true;
+    this.notification_time = data.notification_time || 60; // 1 hour default
+    this.last_synced_at = data.last_synced_at;
+    this.priority = data.priority || 'medium';
+    this.recurrence_pattern = data.recurrence_pattern;
+    this.auto_generated = data.auto_generated || false;
+    this.parent_reminder_id = data.parent_reminder_id;
+    this.snooze_until = data.snooze_until;
+    this.completion_note = data.completion_note;
   }
 
   static fromJSON(json: any): ReminderModel {
@@ -36,7 +62,18 @@ export class ReminderModel implements Reminder {
       is_completed: Boolean(json.is_completed),
       notification_sent: Boolean(json.notification_sent),
       created_at: json.created_at,
-      updated_at: json.updated_at
+      updated_at: json.updated_at,
+      supabase_id: json.supabase_id,
+      sync_status: json.sync_status,
+      email_notification_enabled: Boolean(json.email_notification_enabled),
+      notification_time: json.notification_time,
+      last_synced_at: json.last_synced_at,
+      priority: json.priority,
+      recurrence_pattern: json.recurrence_pattern,
+      auto_generated: Boolean(json.auto_generated),
+      parent_reminder_id: json.parent_reminder_id,
+      snooze_until: json.snooze_until,
+      completion_note: json.completion_note
     });
   }
 
@@ -51,7 +88,18 @@ export class ReminderModel implements Reminder {
       is_completed: this.is_completed,
       notification_sent: this.notification_sent,
       created_at: this.created_at,
-      updated_at: this.updated_at
+      updated_at: this.updated_at,
+      supabase_id: this.supabase_id,
+      sync_status: this.sync_status,
+      email_notification_enabled: this.email_notification_enabled,
+      notification_time: this.notification_time,
+      last_synced_at: this.last_synced_at,
+      priority: this.priority,
+      recurrence_pattern: this.recurrence_pattern,
+      auto_generated: this.auto_generated,
+      parent_reminder_id: this.parent_reminder_id,
+      snooze_until: this.snooze_until,
+      completion_note: this.completion_note
     };
   }
 
@@ -76,6 +124,27 @@ export class ReminderModel implements Reminder {
       errors.push('Ungültiger Erinnerungstyp');
     }
 
+    const validPriorities: ReminderPriority[] = ['low', 'medium', 'high', 'urgent'];
+    if (!validPriorities.includes(this.priority)) {
+      errors.push('Ungültige Priorität');
+    }
+
+    if (this.notification_time < 0) {
+      errors.push('Benachrichtigungszeit muss positiv sein');
+    }
+
+    // Validate recurrence pattern if present
+    if (this.recurrence_pattern) {
+      try {
+        const pattern: RecurrencePattern = JSON.parse(this.recurrence_pattern);
+        if (!pattern.type || !pattern.interval || pattern.interval < 1) {
+          errors.push('Ungültiges Wiederholungsmuster');
+        }
+      } catch {
+        errors.push('Ungültiges Wiederholungsmuster (JSON-Fehler)');
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       errors
@@ -84,11 +153,13 @@ export class ReminderModel implements Reminder {
 
   isOverdue(): boolean {
     if (this.is_completed) return false;
+    if (this.isSnoozed()) return false;
     return new Date(this.reminder_date) < new Date();
   }
 
   isDueToday(): boolean {
     if (this.is_completed) return false;
+    if (this.isSnoozed()) return false;
     const today = new Date();
     const reminderDate = new Date(this.reminder_date);
     return (
@@ -99,9 +170,116 @@ export class ReminderModel implements Reminder {
   }
 
   getDaysUntilDue(): number {
+    if (this.isSnoozed()) {
+      const today = new Date();
+      const snoozeDate = new Date(this.snooze_until!);
+      const diffTime = snoozeDate.getTime() - today.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
     const today = new Date();
     const reminderDate = new Date(this.reminder_date);
     const diffTime = reminderDate.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+
+  isSnoozed(): boolean {
+    if (!this.snooze_until) return false;
+    return new Date(this.snooze_until) > new Date();
+  }
+
+  isHighPriority(): boolean {
+    return this.priority === 'high' || this.priority === 'urgent';
+  }
+
+  isRecurring(): boolean {
+    return !!this.recurrence_pattern;
+  }
+
+  getRecurrencePattern(): RecurrencePattern | null {
+    if (!this.recurrence_pattern) return null;
+    try {
+      return JSON.parse(this.recurrence_pattern);
+    } catch {
+      return null;
+    }
+  }
+
+  setRecurrencePattern(pattern: RecurrencePattern): void {
+    this.recurrence_pattern = JSON.stringify(pattern);
+  }
+
+  clearRecurrence(): void {
+    this.recurrence_pattern = undefined;
+  }
+
+  snooze(hours: number): void {
+    const snoozeDate = new Date();
+    snoozeDate.setHours(snoozeDate.getHours() + hours);
+    this.snooze_until = snoozeDate.toISOString();
+  }
+
+  unsnooze(): void {
+    this.snooze_until = undefined;
+  }
+
+  complete(note?: string): void {
+    this.is_completed = true;
+    this.completion_note = note;
+    this.updated_at = new Date().toISOString();
+  }
+
+  reopen(): void {
+    this.is_completed = false;
+    this.completion_note = undefined;
+    this.updated_at = new Date().toISOString();
+  }
+
+  getEffectiveDate(): Date {
+    if (this.isSnoozed()) {
+      return new Date(this.snooze_until!);
+    }
+    return new Date(this.reminder_date);
+  }
+
+  getNotificationDate(): Date {
+    const effectiveDate = this.getEffectiveDate();
+    const notificationDate = new Date(effectiveDate);
+    notificationDate.setMinutes(notificationDate.getMinutes() - this.notification_time);
+    return notificationDate;
+  }
+
+  shouldNotifyNow(): boolean {
+    if (this.is_completed) return false;
+    if (this.notification_sent && !this.isSnoozed()) return false;
+    
+    const now = new Date();
+    const notificationTime = this.getNotificationDate();
+    
+    return now >= notificationTime;
+  }
+
+  getPriorityColor(): string {
+    const colors = {
+      low: '#10B981',      // green
+      medium: '#F59E0B',   // yellow
+      high: '#F97316',     // orange
+      urgent: '#EF4444'    // red
+    };
+    return colors[this.priority];
+  }
+
+  getPriorityIcon(): string {
+    const icons = {
+      low: '📌',
+      medium: '⚡',
+      high: '🔥',
+      urgent: '🚨'
+    };
+    return icons[this.priority];
+  }
+
+  clone(): ReminderModel {
+    return new ReminderModel(this.toJSON());
   }
 }

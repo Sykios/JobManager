@@ -84,6 +84,10 @@ export interface StatusHistory {
 
 // Reminder Types
 export type ReminderType = 'deadline' | 'follow_up' | 'interview' | 'custom';
+export type ReminderPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type SyncStatus = 'pending' | 'synced' | 'error' | 'local_only';
+export type NotificationType = 'system' | 'email' | 'push';
+export type NotificationStatus = 'sent' | 'failed' | 'pending';
 
 export interface Reminder {
   id: number;
@@ -96,6 +100,18 @@ export interface Reminder {
   notification_sent: boolean;
   created_at: string;
   updated_at: string;
+  // Enhanced fields for sync and notifications
+  supabase_id?: string;
+  sync_status: SyncStatus;
+  email_notification_enabled: boolean;
+  notification_time: number; // minutes before reminder
+  last_synced_at?: string;
+  priority: ReminderPriority;
+  recurrence_pattern?: string; // JSON string for recurring reminders
+  auto_generated: boolean;
+  parent_reminder_id?: number;
+  snooze_until?: string;
+  completion_note?: string;
 }
 
 export interface CalendarEvent {
@@ -109,6 +125,98 @@ export interface CalendarEvent {
   status?: ApplicationStatus;
   company_name?: string;
   position?: string;
+}
+
+// Sync and Notification Types
+export interface SyncQueueItem {
+  id: number;
+  table_name: string;
+  record_id: number;
+  operation: 'create' | 'update' | 'delete';
+  data?: string; // JSON string
+  retry_count: number;
+  last_retry_at?: string;
+  error_message?: string;
+  created_at: string;
+  synced_at?: string;
+}
+
+export interface UserSetting {
+  id: number;
+  key: string;
+  value: string; // JSON string
+  category: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationHistory {
+  id: number;
+  reminder_id: number;
+  notification_type: NotificationType;
+  sent_at: string;
+  status: NotificationStatus;
+  error_message?: string;
+  recipient?: string;
+  created_at: string;
+}
+
+export interface ReminderTemplate {
+  id: number;
+  name: string;
+  title_template: string;
+  description_template?: string;
+  reminder_type: ReminderType;
+  default_notification_time: number;
+  default_priority: ReminderPriority;
+  trigger_conditions?: string; // JSON string
+  is_system_template: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Configuration Types
+export interface NotificationSettings {
+  email_notifications: boolean;
+  system_notifications: boolean;
+  reminder_defaults: {
+    advance_notice: number;
+    work_hours_only: boolean;
+    weekend_notifications: boolean;
+  };
+  email_preferences: {
+    daily_digest: boolean;
+    urgent_only: boolean;
+    summary_time: string;
+  };
+}
+
+export interface SyncSettings {
+  auto_sync: boolean;
+  sync_interval: number; // seconds
+  conflict_resolution: 'local' | 'remote' | 'ask';
+}
+
+export interface CalendarSettings {
+  default_view: 'month' | 'week' | 'agenda';
+  show_completed: boolean;
+  color_scheme: 'type' | 'priority' | 'status';
+}
+
+export interface ReminderSettings {
+  auto_generate: boolean;
+  smart_scheduling: boolean;
+  default_priority: ReminderPriority;
+}
+
+// Recurrence Pattern Types
+export interface RecurrencePattern {
+  type: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number; // every N days/weeks/months/years
+  days_of_week?: number[]; // 0-6, Sunday is 0
+  day_of_month?: number; // 1-31
+  end_date?: string;
+  max_occurrences?: number;
 }
 
 // UI Types
