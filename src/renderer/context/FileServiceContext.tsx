@@ -73,7 +73,7 @@ export const FileServiceProvider: React.FC<FileServiceProviderProps> = ({ childr
     // Get all files
     async getAll(): Promise<FileModel[]> {
       try {
-        const result = await queryDatabase('SELECT * FROM files ORDER BY upload_date DESC');
+        const result = await queryDatabase('SELECT * FROM files ORDER BY upload_date DESC', []);
         const files = result.map((row: any) => FileModel.fromJSON(row));
         return files;
       } catch (error) {

@@ -226,12 +226,12 @@ export const CompaniesPage: React.FC = () => {
         sizeResult,
         recentResult
       ] = await Promise.all([
-        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies'),
-        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies WHERE website IS NOT NULL AND website != ""'),
-        window.electronAPI.queryDatabase('SELECT industry, COUNT(*) as count FROM companies WHERE industry IS NOT NULL GROUP BY industry ORDER BY count DESC'),
-        window.electronAPI.queryDatabase('SELECT location, COUNT(*) as count FROM companies WHERE location IS NOT NULL GROUP BY location ORDER BY count DESC'),
-        window.electronAPI.queryDatabase('SELECT size, COUNT(*) as count FROM companies WHERE size IS NOT NULL GROUP BY size ORDER BY count DESC'),
-        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies WHERE created_at >= date("now", "-30 days")')
+        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies', []),
+        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies WHERE website IS NOT NULL AND website != ""', []),
+        window.electronAPI.queryDatabase('SELECT industry, COUNT(*) as count FROM companies WHERE industry IS NOT NULL GROUP BY industry ORDER BY count DESC', []),
+        window.electronAPI.queryDatabase('SELECT location, COUNT(*) as count FROM companies WHERE location IS NOT NULL GROUP BY location ORDER BY count DESC', []),
+        window.electronAPI.queryDatabase('SELECT size, COUNT(*) as count FROM companies WHERE size IS NOT NULL GROUP BY size ORDER BY count DESC', []),
+        window.electronAPI.queryDatabase('SELECT COUNT(*) as count FROM companies WHERE created_at >= date("now", "-30 days")', [])
       ]);
 
       const byIndustry: Record<string, number> = {};
