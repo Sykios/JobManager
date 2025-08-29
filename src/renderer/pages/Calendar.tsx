@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarEvent, ReminderType, ApplicationStatus } from '../../types';
+import { CalendarEvent, ReminderType, ApplicationStatus, ReminderPriority } from '../../types';
 import { ReminderModel } from '../../models/Reminder';
+import { ReminderService } from '../../services/ReminderService';
+import { ReminderForm } from '../components/reminders/ReminderForm';
+import { Loading } from '../components/common/Loading';
 
 interface CalendarProps {
   onNavigate?: (page: string, state?: any) => void;
 }
 
-interface ReminderFormData {
-  title: string;
-  description: string;
-  reminder_date: string;
-  reminder_type: ReminderType;
-  application_id?: number;
-}
+
 
 export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -30,13 +27,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
     interview: true,
     custom: true
   });
-  const [reminderForm, setReminderForm] = useState<ReminderFormData>({
-    title: '',
-    description: '',
-    reminder_date: '',
-    reminder_type: 'custom',
-    application_id: undefined
-  });
+  const [reminderFormInitialData, setReminderFormInitialData] = useState<any>(undefined);
 
   useEffect(() => {
     loadCalendarData();
@@ -65,9 +56,9 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
       SELECT a.*, c.name as company_name
       FROM applications a
       LEFT JOIN companies c ON a.company_id = c.id
-      WHERE (a.application_date BETWEEN ? AND ?) 
-         OR (a.deadline BETWEEN ? AND ?)
-         OR (a.follow_up_date BETWEEN ? AND ?)
+      WHERE (DATE(a.application_date) BETWEEN ? AND ?) 
+         OR (DATE(a.deadline) BETWEEN ? AND ?)
+         OR (DATE(a.follow_up_date) BETWEEN ? AND ?)
       ORDER BY a.application_date ASC
     `, [
       startDate.toISOString().split('T')[0],
@@ -85,7 +76,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
         applicationEvents.push({
           id: `app-${app.id}-applied`,
           title: `Bewerbung: ${app.position}`,
-          date: app.application_date,
+          date: new Date(app.application_date).toISOString().split('T')[0],
           type: 'application',
           description: `Bewerbung bei ${app.company_name || 'Unbekannt'}`,
           application_id: app.id,
@@ -99,7 +90,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
         applicationEvents.push({
           id: `app-${app.id}-deadline`,
           title: `Deadline: ${app.position}`,
-          date: app.deadline,
+          date: new Date(app.deadline).toISOString().split('T')[0],
           type: 'deadline',
           description: `Bewerbungsdeadline für ${app.company_name || 'Unbekannt'}`,
           application_id: app.id,
@@ -113,7 +104,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
         applicationEvents.push({
           id: `app-${app.id}-followup`,
           title: `Follow-up: ${app.position}`,
-          date: app.follow_up_date,
+          date: new Date(app.follow_up_date).toISOString().split('T')[0],
           type: 'follow_up',
           description: `Nachfrage bei ${app.company_name || 'Unbekannt'}`,
           application_id: app.id,
@@ -128,34 +119,35 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
   };
 
   const loadReminders = async () => {
-    const startDate = getViewStartDate();
-    const endDate = getViewEndDate();
+    try {
+      const startDate = getViewStartDate();
+      const endDate = getViewEndDate();
 
-    const result = await window.electronAPI.queryDatabase(`
-      SELECT r.*, a.position, c.name as company_name
-      FROM reminders r
-      LEFT JOIN applications a ON r.application_id = a.id
-      LEFT JOIN companies c ON a.company_id = c.id
-      WHERE r.reminder_date BETWEEN ? AND ?
-      ORDER BY r.reminder_date ASC
-    `, [
-      startDate.toISOString().split('T')[0],
-      endDate.toISOString().split('T')[0]
-    ]);
+      // Use ReminderService instead of direct database query
+      const allReminders = await ReminderService.getReminders({
+        dateFrom: startDate.toISOString().split('T')[0],
+        dateTo: endDate.toISOString().split('T')[0]
+      });
 
-    const reminderEvents: CalendarEvent[] = result.map((reminder: any) => ({
-      id: `reminder-${reminder.id}`,
-      title: reminder.title,
-      date: reminder.reminder_date,
-      type: reminder.reminder_type,
-      description: reminder.description,
-      reminder_id: reminder.id,
-      application_id: reminder.application_id,
-      company_name: reminder.company_name,
-      position: reminder.position
-    }));
+      const reminderEvents: CalendarEvent[] = allReminders.map((reminder: ReminderModel) => ({
+        id: `reminder-${reminder.id}`,
+        title: reminder.title,
+        date: new Date(reminder.reminder_date).toISOString().split('T')[0],
+        type: reminder.reminder_type,
+        description: reminder.description || '',
+        reminder_id: reminder.id,
+        application_id: reminder.application_id,
+        company_name: '', // Will be populated if needed
+        position: ''     // Will be populated if needed
+      }));
 
-    setEvents(prev => [...prev.filter(e => !e.reminder_id), ...reminderEvents]);
+      setEvents(prev => {
+        const newEvents = [...prev.filter(e => !e.reminder_id), ...reminderEvents];
+        return newEvents;
+      });
+    } catch (error) {
+      console.error('Error loading reminders:', error);
+    }
   };
 
   const loadApplications = async () => {
@@ -216,50 +208,70 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
     return events.filter(event => eventFilters[event.type as keyof typeof eventFilters]);
   };
 
-  const handleCreateReminder = async () => {
+  const handleCreateReminder = async (formData: {
+    title: string;
+    description: string;
+    reminder_date: string;
+    reminder_time: string;
+    reminder_type: ReminderType;
+    priority: ReminderPriority;
+    application_id?: number;
+    email_notification_enabled: boolean;
+    notification_time: number;
+    recurrence_pattern?: string;
+  }) => {
     try {
-      const reminder = new ReminderModel(reminderForm);
-      const validation = reminder.validate();
+      const reminderDateTime = new Date(`${formData.reminder_date}T${formData.reminder_time}`);
       
-      if (!validation.isValid) {
-        alert(validation.errors.join('\n'));
-        return;
+      const reminderData = {
+        ...formData,
+        reminder_date: reminderDateTime.toISOString(),
+        application_id: formData.application_id || undefined
+      };
+
+      if (editingReminder) {
+        await ReminderService.updateReminder(editingReminder.id, reminderData);
+      } else {
+        await ReminderService.createReminder(reminderData);
       }
 
-      await window.electronAPI.executeQuery(`
-        INSERT INTO reminders (application_id, title, description, reminder_date, reminder_type)
-        VALUES (?, ?, ?, ?, ?)
-      `, [
-        reminderForm.application_id || null,
-        reminderForm.title,
-        reminderForm.description || null,
-        reminderForm.reminder_date,
-        reminderForm.reminder_type
-      ]);
-
-      setReminderForm({
-        title: '',
-        description: '',
-        reminder_date: '',
-        reminder_type: 'custom',
-        application_id: undefined
-      });
-      setShowReminderForm(false);
+      resetForm();
       await loadCalendarData();
     } catch (error) {
-      console.error('Failed to create reminder:', error);
-      alert('Fehler beim Erstellen der Erinnerung');
+      console.error('Failed to save reminder:', error);
+      alert('Fehler beim Speichern der Erinnerung');
     }
+  };
+
+  const resetForm = () => {
+    setReminderFormInitialData(undefined);
+    setEditingReminder(null);
+    setShowReminderForm(false);
+  };
+
+  const handleEditReminder = (reminder: ReminderModel) => {
+    setEditingReminder(reminder);
+    const date = new Date(reminder.reminder_date);
+    setReminderFormInitialData({
+      title: reminder.title,
+      description: reminder.description || '',
+      reminder_date: date.toISOString().split('T')[0],
+      reminder_time: date.toTimeString().slice(0, 5),
+      reminder_type: reminder.reminder_type,
+      priority: reminder.priority,
+      application_id: reminder.application_id,
+      email_notification_enabled: reminder.email_notification_enabled,
+      notification_time: reminder.notification_time,
+      recurrence_pattern: reminder.recurrence_pattern
+    });
+    setShowReminderForm(true);
   };
 
   const handleDeleteReminder = async (reminderId: number) => {
     if (!confirm('Erinnerung wirklich löschen?')) return;
     
     try {
-      await window.electronAPI.executeQuery(
-        'DELETE FROM reminders WHERE id = ?',
-        [reminderId]
-      );
+      await ReminderService.deleteReminder(reminderId);
       await loadCalendarData();
     } catch (error) {
       console.error('Failed to delete reminder:', error);
@@ -326,10 +338,10 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
           } ${isToday ? 'bg-blue-50 border-blue-300' : ''}`}
           onClick={() => {
             setSelectedDate(date);
-            setReminderForm(prev => ({ 
-              ...prev, 
-              reminder_date: date.toISOString().split('T')[0] 
-            }));
+            setReminderFormInitialData({
+              reminder_date: date.toISOString().split('T')[0],
+              reminder_time: '09:00'
+            });
             setShowReminderForm(true);
           }}
         >
@@ -417,12 +429,33 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
                       </button>
                     )}
                     {event.reminder_id && (
-                      <button
-                        onClick={() => handleDeleteReminder(event.reminder_id!)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Löschen
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            // Load the full reminder data for editing
+                            const loadReminderForEdit = async () => {
+                              try {
+                                const reminder = await ReminderService.getReminderById(event.reminder_id!);
+                                if (reminder) {
+                                  handleEditReminder(reminder);
+                                }
+                              } catch (error) {
+                                console.error('Failed to load reminder for editing:', error);
+                              }
+                            };
+                            loadReminderForEdit();
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          Bearbeiten
+                        </button>
+                        <button
+                          onClick={() => handleDeleteReminder(event.reminder_id!)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Löschen
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -476,6 +509,12 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
               ))}
             </div>
             
+            <button
+              onClick={() => onNavigate?.('reminders')}
+              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              📝 Erinnerungen
+            </button>
             <button
               onClick={() => setShowReminderForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -578,112 +617,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
       {/* Reminder Form Modal */}
       {showReminderForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              {editingReminder ? 'Termin bearbeiten' : 'Neuen Termin erstellen'}
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Titel *
-                </label>
-                <input
-                  type="text"
-                  value={reminderForm.title}
-                  onChange={(e) => setReminderForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="z.B. Interview mit Max Mustermann"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Beschreibung
-                </label>
-                <textarea
-                  value={reminderForm.description}
-                  onChange={(e) => setReminderForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                  placeholder="Zusätzliche Details..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Datum *
-                </label>
-                <input
-                  type="date"
-                  value={reminderForm.reminder_date}
-                  onChange={(e) => setReminderForm(prev => ({ ...prev, reminder_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Typ
-                </label>
-                <select
-                  value={reminderForm.reminder_type}
-                  onChange={(e) => setReminderForm(prev => ({ ...prev, reminder_type: e.target.value as ReminderType }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="custom">Individueller Termin</option>
-                  <option value="interview">Interview</option>
-                  <option value="follow_up">Follow-up</option>
-                  <option value="deadline">Deadline</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bewerbung (optional)
-                </label>
-                <select
-                  value={reminderForm.application_id || ''}
-                  onChange={(e) => setReminderForm(prev => ({ 
-                    ...prev, 
-                    application_id: e.target.value ? parseInt(e.target.value) : undefined 
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Keine Bewerbung zuordnen</option>
-                  {applications.map(app => (
-                    <option key={app.id} value={app.id}>
-                      {app.position} - {app.company_name || 'Unbekannt'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowReminderForm(false);
-                  setEditingReminder(null);
-                  setReminderForm({
-                    title: '',
-                    description: '',
-                    reminder_date: '',
-                    reminder_type: 'custom',
-                    application_id: undefined
-                  });
-                }}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleCreateReminder}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                {editingReminder ? 'Aktualisieren' : 'Erstellen'}
-              </button>
-            </div>
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <ReminderForm
+              initialData={reminderFormInitialData}
+              onSubmit={handleCreateReminder}
+              onCancel={resetForm}
+              submitLabel={editingReminder ? 'Erinnerung aktualisieren' : 'Erinnerung erstellen'}
+              applications={applications}
+            />
           </div>
         </div>
       )}

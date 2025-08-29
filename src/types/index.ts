@@ -118,7 +118,7 @@ export interface CalendarEvent {
   id: string;
   title: string;
   date: string;
-  type: 'application' | 'reminder' | 'deadline' | 'interview' | 'follow_up';
+  type: 'application' | 'reminder' | 'deadline' | 'interview' | 'follow_up' | 'custom';
   description?: string;
   application_id?: number;
   reminder_id?: number;
