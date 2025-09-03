@@ -1,4 +1,6 @@
 const path = require('path');
+const webpack = require('webpack');
+require('dotenv').config();
 
 module.exports = [
   // Main process configuration
@@ -12,6 +14,15 @@ module.exports = [
       filename: 'main.js',
       clean: false, // Don't clean in dev mode
     },
+    plugins: [
+      new webpack.DefinePlugin({
+        'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),
+        'process.env.SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY || ''),
+        'process.env.SYNC_API_URL': JSON.stringify(process.env.SYNC_API_URL || ''),
+        'process.env.ENABLE_SYNC': JSON.stringify(process.env.ENABLE_SYNC || 'true'),
+        'process.env.NODE_ENV': JSON.stringify('development'),
+      }),
+    ],
     cache: {
       type: 'filesystem',
       cacheDirectory: path.resolve(__dirname, '.webpack-cache'),
