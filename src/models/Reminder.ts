@@ -5,12 +5,15 @@ export class ReminderModel implements Reminder {
   application_id?: number;
   title: string;
   description?: string;
-  reminder_date: string;
+  reminder_date: string; // Now DATE only
+  reminder_time?: string; // NEW: TIME field
   reminder_type: ReminderType;
   is_completed: boolean;
-  notification_sent: boolean;
+  completed_at?: string; // NEW: When completed
+  is_active: boolean; // NEW: For filtering
   created_at: string;
   updated_at: string;
+  deleted_at?: string; // NEW: For soft deletes
   
   // Enhanced fields
   supabase_id?: string;
@@ -24,18 +27,22 @@ export class ReminderModel implements Reminder {
   parent_reminder_id?: number;
   snooze_until?: string;
   completion_note?: string;
+  sync_version: number; // NEW: For conflict resolution
 
   constructor(data: Partial<Reminder> = {}) {
     this.id = data.id || 0;
     this.application_id = data.application_id;
     this.title = data.title || '';
     this.description = data.description;
-    this.reminder_date = data.reminder_date || new Date().toISOString();
+    this.reminder_date = data.reminder_date || new Date().toISOString().split('T')[0]; // Just date
+    this.reminder_time = data.reminder_time; // Optional time
     this.reminder_type = data.reminder_type || 'custom';
     this.is_completed = data.is_completed || false;
-    this.notification_sent = data.notification_sent || false;
+    this.completed_at = data.completed_at;
+    this.is_active = data.is_active !== undefined ? data.is_active : true;
     this.created_at = data.created_at || new Date().toISOString();
     this.updated_at = data.updated_at || new Date().toISOString();
+    this.deleted_at = data.deleted_at;
     
     // Enhanced fields with defaults
     this.supabase_id = data.supabase_id;
@@ -49,6 +56,7 @@ export class ReminderModel implements Reminder {
     this.parent_reminder_id = data.parent_reminder_id;
     this.snooze_until = data.snooze_until;
     this.completion_note = data.completion_note;
+    this.sync_version = data.sync_version || 1;
   }
 
   static fromJSON(json: any): ReminderModel {
@@ -58,11 +66,14 @@ export class ReminderModel implements Reminder {
       title: json.title,
       description: json.description,
       reminder_date: json.reminder_date,
+      reminder_time: json.reminder_time,
       reminder_type: json.reminder_type,
       is_completed: Boolean(json.is_completed),
-      notification_sent: Boolean(json.notification_sent),
+      completed_at: json.completed_at,
+      is_active: json.is_active !== undefined ? Boolean(json.is_active) : true,
       created_at: json.created_at,
       updated_at: json.updated_at,
+      deleted_at: json.deleted_at,
       supabase_id: json.supabase_id,
       sync_status: json.sync_status,
       email_notification_enabled: Boolean(json.email_notification_enabled),
@@ -73,7 +84,8 @@ export class ReminderModel implements Reminder {
       auto_generated: Boolean(json.auto_generated),
       parent_reminder_id: json.parent_reminder_id,
       snooze_until: json.snooze_until,
-      completion_note: json.completion_note
+      completion_note: json.completion_note,
+      sync_version: json.sync_version || 1
     });
   }
 
@@ -84,11 +96,14 @@ export class ReminderModel implements Reminder {
       title: this.title,
       description: this.description,
       reminder_date: this.reminder_date,
+      reminder_time: this.reminder_time,
       reminder_type: this.reminder_type,
       is_completed: this.is_completed,
-      notification_sent: this.notification_sent,
+      completed_at: this.completed_at,
+      is_active: this.is_active,
       created_at: this.created_at,
       updated_at: this.updated_at,
+      deleted_at: this.deleted_at,
       supabase_id: this.supabase_id,
       sync_status: this.sync_status,
       email_notification_enabled: this.email_notification_enabled,
@@ -99,7 +114,8 @@ export class ReminderModel implements Reminder {
       auto_generated: this.auto_generated,
       parent_reminder_id: this.parent_reminder_id,
       snooze_until: this.snooze_until,
-      completion_note: this.completion_note
+      completion_note: this.completion_note,
+      sync_version: this.sync_version
     };
   }
 
@@ -225,12 +241,14 @@ export class ReminderModel implements Reminder {
 
   complete(note?: string): void {
     this.is_completed = true;
+    this.completed_at = new Date().toISOString(); // NEW: Set completion time
     this.completion_note = note;
     this.updated_at = new Date().toISOString();
   }
 
   reopen(): void {
     this.is_completed = false;
+    this.completed_at = undefined; // Clear completion time
     this.completion_note = undefined;
     this.updated_at = new Date().toISOString();
   }
@@ -239,6 +257,12 @@ export class ReminderModel implements Reminder {
     if (this.isSnoozed()) {
       return new Date(this.snooze_until!);
     }
+    
+    // Combine date and time if both are available
+    if (this.reminder_time) {
+      return new Date(`${this.reminder_date}T${this.reminder_time}`);
+    }
+    
     return new Date(this.reminder_date);
   }
 
@@ -251,7 +275,8 @@ export class ReminderModel implements Reminder {
 
   shouldNotifyNow(): boolean {
     if (this.is_completed) return false;
-    if (this.notification_sent && !this.isSnoozed()) return false;
+    if (!this.is_active) return false;
+    if (this.isSnoozed()) return false;
     
     const now = new Date();
     const notificationTime = this.getNotificationDate();
