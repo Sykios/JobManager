@@ -5,9 +5,9 @@ import { setupDatabase, initializeDatabase, getDatabase } from '../database';
 import { SyncService, SyncConfig } from '../services/SyncService';
 import { createAuthService, getAuthService, AuthConfig } from '../services/AuthService';
 import { v4 as uuidv4 } from 'uuid';
-
-// Load environment variables
 import * as dotenv from 'dotenv';
+
+// Load environment variables from .env file
 dotenv.config();
 
 /**
@@ -183,7 +183,7 @@ const initializeSyncService = async (): Promise<void> => {
     
     // Sync configuration
     const syncConfig: SyncConfig = {
-      apiBaseUrl: process.env.SYNC_API_URL || 'https://your-vercel-app.vercel.app',
+      apiBaseUrl: process.env.SYNC_API_URL || 'https://JobManager.vercel.app',
       enableSync: process.env.ENABLE_SYNC !== 'false', // Default to true unless explicitly disabled
     };
 
