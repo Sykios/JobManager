@@ -18,6 +18,184 @@ interface RecentApplication extends Application {
   company_name?: string;
 }
 
+// Development Helper Component
+const DevelopmentHelper: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [message, setMessage] = useState<string>('');
+
+  const createTestData = async () => {
+    try {
+      setMessage('🔄 Creating test data...');
+      
+      // First create test companies
+      const testCompanies = [
+        {
+          name: 'TechCorp GmbH',
+          industry: 'Software Development',
+          location: 'Wien',
+          website: 'https://techcorp.at'
+        },
+        {
+          name: 'StartupXY',
+          industry: 'E-Commerce',
+          location: 'Graz', 
+          website: 'https://startupxy.com'
+        },
+        {
+          name: 'Digital Solutions',
+          industry: 'Consulting',
+          location: 'Salzburg',
+          website: 'https://digitalsolutions.co.at'
+        }
+      ];
+
+      const companyIds = [];
+      for (const company of testCompanies) {
+        await window.electronAPI.queryDatabase(
+          `INSERT INTO companies (name, industry, location, website, created_at, updated_at)
+           VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`,
+          [company.name, company.industry, company.location, company.website]
+        );
+        
+        // Get the last inserted ID using SQLite syntax
+        const result = await window.electronAPI.queryDatabase(
+          'SELECT last_insert_rowid() as id',
+          []
+        );
+        if (result && result.length > 0) {
+          companyIds.push(result[0].id);
+        }
+      }
+
+      // Then create test applications with proper company_id references
+      const testApplications = [
+        {
+          company_id: companyIds[0],
+          title: 'Junior Developer Position',
+          position: 'Junior Developer',
+          status: 'applied',
+          application_date: new Date().toISOString().split('T')[0],
+          salary_range: '45.000€ - 55.000€',
+          work_type: 'full-time',
+          location: 'Wien',
+          remote_possible: true,
+          priority: 3,
+          notes: 'Applied via company website'
+        },
+        {
+          company_id: companyIds[1],
+          title: 'Frontend Developer Position', 
+          position: 'Frontend Developer',
+          status: 'interview',
+          application_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          salary_range: '42.000€ - 52.000€',
+          work_type: 'full-time',
+          location: 'Graz',
+          remote_possible: false,
+          priority: 4,
+          notes: 'Phone interview scheduled for next week'
+        },
+        {
+          company_id: companyIds[2],
+          title: 'Full Stack Developer Position',
+          position: 'Full Stack Developer',
+          status: 'rejected',
+          application_date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          salary_range: '50.000€ - 65.000€',
+          work_type: 'full-time',
+          location: 'Salzburg',
+          remote_possible: true,
+          priority: 5,
+          notes: 'Not enough experience with React'
+        }
+      ];
+
+      for (const app of testApplications) {
+        await window.electronAPI.queryDatabase(
+          `INSERT INTO applications (
+            company_id, title, position, status, application_date, 
+            salary_range, work_type, location, remote_possible, priority, 
+            notes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+          [
+            app.company_id, app.title, app.position, app.status, 
+            app.application_date, app.salary_range, app.work_type, 
+            app.location, app.remote_possible, app.priority, app.notes
+          ]
+        );
+      }
+
+      setMessage('✅ Test data created successfully! Refresh the page to see changes.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Failed to create test data:', error);
+      setMessage('❌ Failed to create test data: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  const clearAllData = async () => {
+    if (!confirm('⚠️ This will delete ALL application data. Are you sure?')) return;
+    
+    try {
+      setMessage('🗑️ Clearing all data...');
+      await window.electronAPI.queryDatabase('DELETE FROM applications', []);
+      setMessage('✅ All data cleared! Refresh the page to see changes.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      setMessage('❌ Failed to clear data: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  // Only show in development mode
+  if (process.env.NODE_ENV !== 'development' && false) return null;
+
+  return (
+    <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="text-yellow-800 font-medium">🛠️ Development Mode</span>
+          {message && <span className="text-sm text-gray-600">{message}</span>}
+        </div>
+        <button
+          onClick={() => setIsVisible(!isVisible)}
+          className="text-xs bg-yellow-200 hover:bg-yellow-300 px-2 py-1 rounded text-yellow-800"
+        >
+          {isVisible ? 'Hide' : 'Show'} Tools
+        </button>
+      </div>
+      
+      {isVisible && (
+        <div className="mt-3 pt-3 border-t border-yellow-200">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={createTestData}
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-colors"
+            >
+              📝 Create Test Applications
+            </button>
+            <button
+              onClick={clearAllData}
+              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition-colors"
+            >
+              🗑️ Clear All Data
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded transition-colors"
+            >
+              🔄 Refresh Dashboard
+            </button>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            These development tools help you test the application with sample data.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [stats, setStats] = useState<DashboardStats>({
     totalApplications: 0,
@@ -187,6 +365,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   }
   return (
     <div className="space-y-6">
+      {/* Development Helper */}
+      <DevelopmentHelper />
+      
       {/* Header */}
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
