@@ -238,7 +238,7 @@ export const SyncSettings: React.FC = () => {
             </label>
             <input
               type="url"
-              placeholder="https://your-vercel-app.vercel.app"
+              placeholder="https://jobmanager-api.vercel.app"
               className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               readOnly
             />

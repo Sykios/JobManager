@@ -183,7 +183,7 @@ const initializeSyncService = async (): Promise<void> => {
     
     // Sync configuration
     const syncConfig: SyncConfig = {
-      apiBaseUrl: process.env.SYNC_API_URL || 'https://JobManager.vercel.app',
+      apiBaseUrl: process.env.SYNC_API_URL || 'https://jobmanager-api.vercel.app',
       enableSync: process.env.ENABLE_SYNC !== 'false', // Default to true unless explicitly disabled
     };
 

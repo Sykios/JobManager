@@ -104,7 +104,7 @@ class SimpleSyncTester {
         try {
             const axios = require('axios');
             
-            const response = await axios.get('https://JobManager.vercel.app/api/synchronizeJobManager/health', {
+            const response = await axios.get('https://jobmanager-api.vercel.app/api/synchronizeJobManager/health', {
                 timeout: 10000,
                 headers: {
                     'User-Agent': 'JobManager-Test/1.0.0'

@@ -27,7 +27,7 @@ export class SyncTestSuite {
         
         // Initialize sync service
         this.syncService = new SyncService(db, {
-            apiBaseUrl: 'https://JobManager.vercel.app/api',
+            apiBaseUrl: 'https://jobmanager-api.vercel.app/api',
             enableSync: true
         });
         
