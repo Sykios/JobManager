@@ -435,6 +435,9 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           font-size: 0.875rem;
           transition: all 0.2s;
           box-sizing: border-box;
+          pointer-events: auto;
+          position: relative;
+          z-index: 1;
         }
 
         .form-group input:focus,

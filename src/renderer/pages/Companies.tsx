@@ -178,7 +178,7 @@ export const CompaniesPage: React.FC = () => {
         ]
       );
 
-      const created = await this.getById(result.lastInsertRowid);
+      const created = await this.getById(result.lastID);
       if (!created) throw new Error('Failed to retrieve created company');
       return created;
     },
@@ -778,8 +778,8 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Company Form Modal */}
       {showForm && (
-        <div className="form-overlay">
-          <div className="form-container">
+        <div className="form-overlay" onClick={handleCancelForm}>
+          <div className="form-container" onClick={(e) => e.stopPropagation()}>
             <CompanyForm
               company={editingCompany || undefined}
               onSave={handleSaveCompany}

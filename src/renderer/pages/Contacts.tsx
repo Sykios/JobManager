@@ -599,8 +599,8 @@ export const ContactsPage: React.FC = () => {
       <div className="main-content">
         {/* Contact form */}
         {showForm && (
-          <div className="form-overlay">
-            <div className="form-container">
+          <div className="form-overlay" onClick={handleCancelForm}>
+            <div className="form-container" onClick={(e) => e.stopPropagation()}>
               <ContactForm
                 contact={editingContact || undefined}
                 onSave={handleSaveContact}
