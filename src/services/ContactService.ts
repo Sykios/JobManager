@@ -106,7 +106,11 @@ export class ContactService {
       throw new Error('Failed to create contact');
     }
 
-    return this.getById(result.lastID);
+    // Queue for sync
+    const createdContact = await this.getById(result.lastID);
+    await this.queueForSync(result.lastID, 'create', createdContact.toJSON());
+
+    return createdContact;
   }
 
   /**
@@ -152,7 +156,12 @@ export class ContactService {
     const query = `UPDATE contacts SET ${setClause}, updated_at = ? WHERE id = ?`;
     await this.db.run(query, [...values, new Date().toISOString(), id]);
 
-    return this.getById(id);
+    const updatedContact = await this.getById(id);
+    
+    // Queue for sync
+    await this.queueForSync(id, 'update', updatedContact.toJSON());
+
+    return updatedContact;
   }
 
   /**
@@ -175,6 +184,9 @@ export class ContactService {
     if (result.changes === 0) {
       throw new Error(`Contact with ID ${id} not found`);
     }
+
+    // Queue for sync
+    await this.queueForSync(id, 'delete');
   }
 
   /**
@@ -477,5 +489,21 @@ export class ContactService {
       .join('\n');
 
     return csvContent;
+  }
+
+  /**
+   * Queue contact for synchronization
+   */
+  private async queueForSync(recordId: number, operation: 'create' | 'update' | 'delete', data?: any): Promise<void> {
+    try {
+      await this.db.run(
+        `INSERT INTO sync_queue (table_name, record_id, operation, data) 
+         VALUES (?, ?, ?, ?)`,
+        ['contacts', recordId, operation, data ? JSON.stringify(data) : null]
+      );
+    } catch (error) {
+      console.error('Failed to queue contact for sync:', error);
+      // Don't fail the main operation if sync queueing fails
+    }
   }
 }

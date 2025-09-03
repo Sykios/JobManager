@@ -23,15 +23,16 @@ export class ReminderService {
 
     const result = await window.electronAPI.executeQuery(`
       INSERT INTO reminders (
-        application_id, title, description, reminder_date, reminder_type,
+        application_id, title, description, reminder_date, reminder_time, reminder_type,
         priority, email_notification_enabled, notification_time, 
-        recurrence_pattern, auto_generated, parent_reminder_id, sync_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        recurrence_pattern, auto_generated, parent_reminder_id, sync_status, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       reminder.application_id || null,
       reminder.title,
       reminder.description || null,
       reminder.reminder_date,
+      reminder.reminder_time || null,
       reminder.reminder_type,
       reminder.priority,
       reminder.email_notification_enabled,
@@ -39,10 +40,16 @@ export class ReminderService {
       reminder.recurrence_pattern || null,
       reminder.auto_generated,
       reminder.parent_reminder_id || null,
-      reminder.sync_status
+      reminder.sync_status,
+      reminder.is_active
     ]);
 
-    return this.getReminderById(result.lastID);
+    const createdReminder = await this.getReminderById(result.lastID);
+    
+    // Queue for sync
+    await this.queueForSync(result.lastID, 'create', createdReminder.toJSON());
+
+    return createdReminder;
   }
 
   /**
@@ -50,8 +57,8 @@ export class ReminderService {
    */
   static async updateReminder(id: number, data: Partial<Reminder>): Promise<ReminderModel> {
     const existingReminder = await this.getReminderById(id);
-    const updatedReminder = new ReminderModel({ ...existingReminder.toJSON(), ...data });
-    const validation = updatedReminder.validate();
+    const reminderData = new ReminderModel({ ...existingReminder.toJSON(), ...data });
+    const validation = reminderData.validate();
     
     if (!validation.isValid) {
       throw new Error(validation.errors.join(', '));
@@ -59,35 +66,75 @@ export class ReminderService {
 
     await window.electronAPI.executeQuery(`
       UPDATE reminders SET
-        application_id = ?, title = ?, description = ?, reminder_date = ?,
+        application_id = ?, title = ?, description = ?, reminder_date = ?, reminder_time = ?,
         reminder_type = ?, priority = ?, email_notification_enabled = ?,
-        notification_time = ?, recurrence_pattern = ?, is_completed = ?,
-        snooze_until = ?, completion_note = ?, updated_at = CURRENT_TIMESTAMP
+        notification_time = ?, recurrence_pattern = ?, is_completed = ?, completed_at = ?,
+        snooze_until = ?, completion_note = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [
-      updatedReminder.application_id || null,
-      updatedReminder.title,
-      updatedReminder.description || null,
-      updatedReminder.reminder_date,
-      updatedReminder.reminder_type,
-      updatedReminder.priority,
-      updatedReminder.email_notification_enabled,
-      updatedReminder.notification_time,
-      updatedReminder.recurrence_pattern || null,
-      updatedReminder.is_completed,
-      updatedReminder.snooze_until || null,
-      updatedReminder.completion_note || null,
+      reminderData.application_id || null,
+      reminderData.title,
+      reminderData.description || null,
+      reminderData.reminder_date,
+      reminderData.reminder_time || null,
+      reminderData.reminder_type,
+      reminderData.priority,
+      reminderData.email_notification_enabled,
+      reminderData.notification_time,
+      reminderData.recurrence_pattern || null,
+      reminderData.is_completed,
+      reminderData.completed_at || null,
+      reminderData.snooze_until || null,
+      reminderData.completion_note || null,
+      reminderData.is_active,
       id
     ]);
 
-    return this.getReminderById(id);
+    const finalReminder = await this.getReminderById(id);
+    
+    // Queue for sync
+    await this.queueForSync(id, 'update', finalReminder.toJSON());
+
+    return finalReminder;
   }
 
   /**
-   * Delete a reminder
+   * Delete a reminder (soft delete)
    */
   static async deleteReminder(id: number): Promise<void> {
+    await window.electronAPI.executeQuery(`
+      UPDATE reminders SET 
+        deleted_at = CURRENT_TIMESTAMP, 
+        is_active = FALSE,
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `, [id]);
+
+    // Queue for sync
+    await this.queueForSync(id, 'delete');
+  }
+
+  /**
+   * Permanently delete a reminder
+   */
+  static async hardDeleteReminder(id: number): Promise<void> {
+    // Queue for sync before deleting
+    await this.queueForSync(id, 'delete');
+    
     await window.electronAPI.executeQuery('DELETE FROM reminders WHERE id = ?', [id]);
+  }
+
+  /**
+   * Restore a soft-deleted reminder
+   */
+  static async restoreReminder(id: number): Promise<void> {
+    await window.electronAPI.executeQuery(`
+      UPDATE reminders SET 
+        deleted_at = NULL, 
+        is_active = TRUE,
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `, [id]);
   }
 
   /**
@@ -125,7 +172,7 @@ export class ReminderService {
       FROM reminders r
       LEFT JOIN applications a ON r.application_id = a.id
       LEFT JOIN companies c ON a.company_id = c.id
-      WHERE 1=1
+      WHERE r.deleted_at IS NULL AND r.is_active = TRUE
     `;
     const params: any[] = [];
 
@@ -160,7 +207,11 @@ export class ReminderService {
     }
 
     if (filters?.overdue) {
-      query += ' AND r.reminder_date < datetime("now") AND r.is_completed = 0 AND (r.snooze_until IS NULL OR r.snooze_until < datetime("now"))';
+      query += ` AND (
+        (r.reminder_time IS NOT NULL AND datetime(r.reminder_date || ' ' || r.reminder_time) < datetime('now'))
+        OR 
+        (r.reminder_time IS NULL AND date(r.reminder_date) < date('now'))
+      ) AND r.is_completed = 0 AND (r.snooze_until IS NULL OR r.snooze_until < datetime('now'))`;
     }
 
     query += ' ORDER BY r.reminder_date ASC';
@@ -259,9 +310,11 @@ export class ReminderService {
     const nextReminder = new ReminderModel({
       ...parentReminder.toJSON(),
       id: 0,
-      reminder_date: nextDate.toISOString(),
+      reminder_date: nextDate.toISOString().split('T')[0], // Just date
+      reminder_time: parentReminder.reminder_time, // Keep same time
       is_completed: false,
-      notification_sent: false,
+      completed_at: undefined,
+      is_active: true,
       parent_reminder_id: parentReminder.parent_reminder_id || parentReminder.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -333,7 +386,8 @@ export class ReminderService {
             title: this.replacePlaceholders(template.title_template, app),
             description: template.description_template ? 
               this.replacePlaceholders(template.description_template, app) : undefined,
-            reminder_date: reminderDate.toISOString(),
+            reminder_date: reminderDate.toISOString().split('T')[0], // Just date part
+            reminder_time: reminderDate.toTimeString().slice(0, 5), // Time part HH:MM
             reminder_type: template.reminder_type,
             priority: template.default_priority,
             notification_time: template.default_notification_time,
@@ -435,20 +489,38 @@ export class ReminderService {
    * Get reminders that need notifications
    */
   static async getRemindersNeedingNotification(): Promise<ReminderModel[]> {
-    const reminders = await this.getReminders({ completed: false });
-    return reminders.filter(reminder => reminder.shouldNotifyNow());
+    // More efficient: query database directly instead of filtering in JS
+    const query = `
+      SELECT r.*, a.position, a.title as application_title, c.name as company_name
+      FROM reminders r
+      LEFT JOIN applications a ON r.application_id = a.id
+      LEFT JOIN companies c ON a.company_id = c.id
+      WHERE r.deleted_at IS NULL 
+        AND r.is_active = TRUE
+        AND r.is_completed = FALSE
+        AND r.email_notification_enabled = TRUE
+        AND (r.snooze_until IS NULL OR r.snooze_until <= datetime('now'))
+        AND (
+          -- For reminders with time: check datetime combination
+          (r.reminder_time IS NOT NULL AND 
+           datetime(r.reminder_date || ' ' || r.reminder_time, '-' || r.notification_time || ' minutes') <= datetime('now'))
+          OR
+          -- For date-only reminders: check date with notification offset
+          (r.reminder_time IS NULL AND 
+           datetime(r.reminder_date || ' 09:00:00', '-' || r.notification_time || ' minutes') <= datetime('now'))
+        )
+      ORDER BY r.reminder_date ASC, r.reminder_time ASC
+    `;
+    
+    const result = await window.electronAPI.queryDatabase(query);
+    return result.map((row: any) => ReminderModel.fromJSON(row));
   }
 
   /**
-   * Mark notification as sent
+   * Mark notification as sent (now only logs to history, no field to update)
    */
   static async markNotificationSent(reminderId: number, type: 'system' | 'email' | 'push'): Promise<void> {
-    await window.electronAPI.executeQuery(
-      'UPDATE reminders SET notification_sent = 1 WHERE id = ?',
-      [reminderId]
-    );
-
-    // Log notification history
+    // We no longer have notification_sent field, just log the notification
     await this.logNotification(reminderId, type, 'sent');
   }
 
@@ -522,5 +594,21 @@ export class ReminderService {
     };
 
     return stats;
+  }
+
+  /**
+   * Queue reminder for synchronization
+   */
+  private static async queueForSync(recordId: number, operation: 'create' | 'update' | 'delete', data?: any): Promise<void> {
+    try {
+      await window.electronAPI.executeQuery(
+        `INSERT INTO sync_queue (table_name, record_id, operation, data) 
+         VALUES (?, ?, ?, ?)`,
+        ['reminders', recordId, operation, data ? JSON.stringify(data) : null]
+      );
+    } catch (error) {
+      console.error('Failed to queue reminder for sync:', error);
+      // Don't fail the main operation if sync queueing fails
+    }
   }
 }

@@ -124,7 +124,12 @@ export class ApplicationService {
       throw new Error('Failed to create application');
     }
 
-    return this.getById(result.lastID);
+    const createdApplication = await this.getById(result.lastID);
+    
+    // Queue for sync
+    await this.queueForSync(result.lastID, 'create', createdApplication.toJSON());
+    
+    return createdApplication;
   }
 
   /**
@@ -170,7 +175,12 @@ export class ApplicationService {
     const query = `UPDATE applications SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     await this.db.run(query, [...values, id]);
 
-    return this.getById(id);
+    const updatedApplication = await this.getById(id);
+    
+    // Queue for sync
+    await this.queueForSync(id, 'update', updatedApplication.toJSON());
+
+    return updatedApplication;
   }
 
   /**
@@ -436,8 +446,27 @@ export class ApplicationService {
       }
     }
 
+    // Queue for sync before deleting
+    await this.queueForSync(id, 'delete');
+
     // Delete the application
     await this.delete(id);
+  }
+
+  /**
+   * Queue application for synchronization
+   */
+  private async queueForSync(recordId: number, operation: 'create' | 'update' | 'delete', data?: any): Promise<void> {
+    try {
+      await this.db.run(
+        `INSERT INTO sync_queue (table_name, record_id, operation, data) 
+         VALUES (?, ?, ?, ?)`,
+        ['applications', recordId, operation, data ? JSON.stringify(data) : null]
+      );
+    } catch (error) {
+      console.error('Failed to queue application for sync:', error);
+      // Don't fail the main operation if sync queueing fails
+    }
   }
 
   /**

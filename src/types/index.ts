@@ -27,6 +27,9 @@ export interface Company {
   description?: string;
   created_at: string;
   updated_at: string;
+  supabase_id?: string;
+  sync_status?: SyncStatus;
+  last_synced_at?: string;
 }
 
 export interface Contact {
@@ -41,6 +44,9 @@ export interface Contact {
   notes?: string;
   created_at: string;
   updated_at: string;
+  supabase_id?: string;
+  sync_status?: SyncStatus;
+  last_synced_at?: string;
 }
 
 export interface Application {
@@ -66,6 +72,9 @@ export interface Application {
   benefits?: string;
   created_at: string;
   updated_at: string;
+  supabase_id?: string;
+  sync_status?: SyncStatus;
+  last_synced_at?: string;
   // Optional file metadata
   fileCount?: number;
   totalFileSize?: number;
@@ -94,12 +103,15 @@ export interface Reminder {
   application_id?: number;
   title: string;
   description?: string;
-  reminder_date: string;
+  reminder_date: string; // Now DATE only
+  reminder_time?: string; // NEW: TIME field
   reminder_type: ReminderType;
   is_completed: boolean;
-  notification_sent: boolean;
+  completed_at?: string; // NEW: When completed
+  is_active: boolean; // NEW: For filtering
   created_at: string;
   updated_at: string;
+  deleted_at?: string; // NEW: For soft deletes
   // Enhanced fields for sync and notifications
   supabase_id?: string;
   sync_status: SyncStatus;
@@ -112,6 +124,7 @@ export interface Reminder {
   parent_reminder_id?: number;
   snooze_until?: string;
   completion_note?: string;
+  sync_version: number; // NEW: For conflict resolution
 }
 
 export interface CalendarEvent {

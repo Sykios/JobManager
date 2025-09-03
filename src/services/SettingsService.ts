@@ -248,9 +248,13 @@ export class SettingsService {
   }
 }
 
-export class SyncService {
+/**
+ * Settings Service Utilities for Renderer Process
+ * (The main SyncService is in the main process, this provides renderer utilities)
+ */
+export class SyncUtilities {
   /**
-   * Add item to sync queue
+   * Add item to sync queue via IPC
    */
   static async addToSyncQueue(
     tableName: string,
@@ -303,67 +307,6 @@ export class SyncService {
   }
 
   /**
-   * Mark sync item as completed
-   */
-  static async markSyncCompleted(syncId: number): Promise<void> {
-    try {
-      await window.electronAPI.executeQuery(`
-        UPDATE sync_queue 
-        SET synced_at = CURRENT_TIMESTAMP 
-        WHERE id = ?
-      `, [syncId]);
-    } catch (error) {
-      console.error('Error marking sync completed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Mark sync item as failed
-   */
-  static async markSyncFailed(
-    syncId: number, 
-    errorMessage: string, 
-    incrementRetry: boolean = true
-  ): Promise<void> {
-    try {
-      let query = `
-        UPDATE sync_queue 
-        SET error_message = ?, last_retry_at = CURRENT_TIMESTAMP
-      `;
-      const params = [errorMessage];
-
-      if (incrementRetry) {
-        query += ', retry_count = retry_count + 1';
-      }
-
-      query += ' WHERE id = ?';
-      params.push(syncId.toString());
-
-      await window.electronAPI.executeQuery(query, params);
-    } catch (error) {
-      console.error('Error marking sync failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Clear completed sync items
-   */
-  static async clearCompletedSyncItems(olderThanDays: number = 7): Promise<void> {
-    try {
-      await window.electronAPI.executeQuery(`
-        DELETE FROM sync_queue 
-        WHERE synced_at IS NOT NULL 
-        AND synced_at < datetime('now', '-${olderThanDays} days')
-      `);
-    } catch (error) {
-      console.error('Error clearing completed sync items:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Get sync statistics
    */
   static async getSyncStats(): Promise<{
@@ -405,18 +348,43 @@ export class SyncService {
   }
 
   /**
-   * Retry failed sync items
+   * Request manual sync via IPC
    */
-  static async retryFailedSyncItems(): Promise<void> {
+  static async triggerSync(): Promise<void> {
     try {
-      await window.electronAPI.executeQuery(`
-        UPDATE sync_queue 
-        SET retry_count = 0, error_message = NULL, last_retry_at = NULL
-        WHERE synced_at IS NULL AND retry_count >= 3
-      `);
+      // This would be exposed via IPC to trigger sync in main process
+      await (window as any).electronAPI.triggerSync?.();
     } catch (error) {
-      console.error('Error retrying failed sync items:', error);
+      console.error('Error triggering sync:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get sync status via IPC
+   */
+  static async getSyncStatus(): Promise<{
+    lastSync: string | null;
+    pendingItems: number;
+    syncInProgress: boolean;
+    autoSyncEnabled: boolean;
+  }> {
+    try {
+      // This would be exposed via IPC to get sync status from main process
+      return await (window as any).electronAPI.getSyncStatus?.() || {
+        lastSync: null,
+        pendingItems: 0,
+        syncInProgress: false,
+        autoSyncEnabled: false,
+      };
+    } catch (error) {
+      console.error('Error getting sync status:', error);
+      return {
+        lastSync: null,
+        pendingItems: 0,
+        syncInProgress: false,
+        autoSyncEnabled: false,
+      };
     }
   }
 }
