@@ -8,6 +8,7 @@ import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ReminderForm } from '../components/reminders/ReminderForm';
+import { ReminderTemplates } from '../components/reminders/ReminderTemplates';
 
 interface RemindersPageProps {
   onNavigate?: (page: string, state?: any) => void;
@@ -30,7 +31,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<ReminderModel | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [activeTab, setActiveTab] = useState<'reminders' | 'templates'>('reminders');
   
   const [filters, setFilters] = useState<ReminderFilters>({
     search: '',
@@ -209,7 +210,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     title: string;
     description: string;
     reminder_date: string;
-    reminder_time: string;
+    reminder_time?: string; // Made optional
     reminder_type: ReminderType;
     priority: ReminderPriority;
     application_id?: number;
@@ -218,11 +219,12 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     recurrence_pattern?: string;
   }) => {
     try {
-      const reminderDateTime = new Date(`${formData.reminder_date}T${formData.reminder_time}`);
-      
       const reminderData = {
         ...formData,
-        reminder_date: reminderDateTime.toISOString(),
+        reminder_date: formData.reminder_date, // Keep as date string
+        reminder_time: formData.reminder_time && formData.reminder_time.trim() !== '' 
+          ? formData.reminder_time 
+          : undefined, // Make time optional
         application_id: formData.application_id || undefined
       };
 
@@ -327,14 +329,19 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     return icons[type];
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('de-DE', {
+  const formatDateTime = (reminder: ReminderModel) => {
+    const date = new Date(reminder.reminder_date);
+    const dateStr = date.toLocaleDateString('de-DE', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
+    
+    if (reminder.reminder_time) {
+      return `${dateStr} um ${reminder.reminder_time}`;
+    } else {
+      return `${dateStr} (ganztägig)`;
+    }
   };
 
   const renderReminderCard = (reminder: ReminderModel) => (
@@ -364,7 +371,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
           )}
           
           <div className="flex items-center space-x-4 text-sm text-gray-500">
-            <span>{formatDateTime(reminder.reminder_date)}</span>
+            <span>{formatDateTime(reminder)}</span>
             {reminder.application_id && (
               <span className="text-blue-600">
                 {applications.find(app => app.id === reminder.application_id)?.position || 'Bewerbung'}
@@ -460,43 +467,72 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             >
               Kalender
             </Button>
-            <Button
-              variant="primary"
-              onClick={() => setShowForm(true)}
-              leftIcon="+"
-              size="md"
-            >
-              Neue Erinnerung
-            </Button>
+            {activeTab === 'reminders' && (
+              <Button
+                variant="primary"
+                onClick={() => setShowForm(true)}
+                leftIcon="+"
+                size="md"
+              >
+                Neue Erinnerung
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Gesamt</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
-            <div className="text-sm text-gray-600">Überfällig</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">{stats.dueToday}</div>
-            <div className="text-sm text-gray-600">Heute</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
-            <div className="text-sm text-gray-600">Geplant</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-            <div className="text-sm text-gray-600">Erledigt</div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mb-6">
+          <button
+            onClick={() => setActiveTab('reminders')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'reminders'
+                ? 'bg-blue-100 text-blue-700'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            📝 Erinnerungen
+          </button>
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === 'templates'
+                ? 'bg-blue-100 text-blue-700'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            🗂️ Vorlagen
+          </button>
         </div>
 
-        {/* Quick Filter Presets */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        {/* Stats - Only show for reminders tab */}
+        {activeTab === 'reminders' && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-600">Gesamt</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+              <div className="text-sm text-gray-600">Überfällig</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">{stats.dueToday}</div>
+              <div className="text-sm text-gray-600">Heute</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{stats.upcoming}</div>
+              <div className="text-sm text-gray-600">Geplant</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+              <div className="text-sm text-gray-600">Erledigt</div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Filter Presets - Only show for reminders tab */}
+        {activeTab === 'reminders' && (
+          <div className="flex flex-wrap gap-2 mb-4">
           <Button
             variant={filters.status === 'overdue' ? 'primary' : 'secondary'}
             size="sm"
@@ -541,8 +577,10 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             ✕ Filter zurücksetzen
           </Button>
         </div>
+        )}
 
-        {/* Advanced Filters */}
+        {/* Advanced Filters - Only show for reminders tab */}
+        {activeTab === 'reminders' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
           <div className="lg:col-span-2">
             <SearchInput
@@ -614,8 +652,10 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             fullWidth
           />
         </div>
+        )}
 
-        {/* Secondary Filters */}
+        {/* Secondary Filters - Only show for reminders tab */}
+        {activeTab === 'reminders' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <Select
             value={filters.application_id || ''}
@@ -649,9 +689,10 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             fullWidth
           />
         </div>
+        )}
 
-        {/* Filter Summary */}
-        {(filters.search || filters.priority || filters.type || filters.application_id || filters.company_id || filters.date_range || filters.status !== 'all') && (
+        {/* Filter Summary - Only show for reminders tab */}
+        {activeTab === 'reminders' && (filters.search || filters.priority || filters.type || filters.application_id || filters.company_id || filters.date_range || filters.status !== 'all') && (
           <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-blue-50 rounded-lg">
             <span className="text-sm font-medium text-blue-800">Aktive Filter:</span>
             {filters.search && (
@@ -725,55 +766,47 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center justify-between">
+        {/* Reminder Count - Only show for reminders tab */}
+        {activeTab === 'reminders' && (
+        <div className="mb-4">
           <div className="text-sm text-gray-600">
             {reminders.length} von {allReminders.length} Erinnerungen
           </div>
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1 text-sm rounded ${viewMode === 'list' ? 'bg-white shadow' : ''}`}
-            >
-              📋 Liste
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1 text-sm rounded ${viewMode === 'grid' ? 'bg-white shadow' : ''}`}
-            >
-              🔲 Karten
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
-      {/* Reminders */}
-      <div className="space-y-4">
-        {reminders.length === 0 ? (
-          <div className="bg-white rounded-lg p-8 text-center">
-            <div className="text-gray-400 text-6xl mb-4">📝</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Erinnerungen gefunden</h3>
-            <p className="text-gray-600 mb-4">
-              {filters.search || filters.priority || filters.type ? 
-                'Versuche andere Filtereinstellungen.' : 
-                'Erstelle deine erste Erinnerung!'
-              }
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => setShowForm(true)}
-              leftIcon="+"
-              size="lg"
-            >
-              Neue Erinnerung
-            </Button>
-          </div>
-        ) : (
-          reminders.map(renderReminderCard)
-        )}
-      </div>
+      {/* Tab Content */}
+      {activeTab === 'reminders' ? (
+        <div className="space-y-4">
+          {reminders.length === 0 ? (
+            <div className="bg-white rounded-lg p-8 text-center">
+              <div className="text-gray-400 text-6xl mb-4">📝</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Erinnerungen gefunden</h3>
+              <p className="text-gray-600 mb-4">
+                {filters.search || filters.priority || filters.type ? 
+                  'Versuche andere Filtereinstellungen.' : 
+                  'Erstelle deine erste Erinnerung!'
+                }
+              </p>
+              <Button
+                variant="primary"
+                onClick={() => setShowForm(true)}
+                leftIcon="+"
+                size="lg"
+              >
+                Neue Erinnerung
+              </Button>
+            </div>
+          ) : (
+            reminders.map(renderReminderCard)
+          )}
+        </div>
+      ) : (
+        <ReminderTemplates />
+      )}
 
-      {/* Floating Action Button for mobile/quick access */}
+      {/* Floating Action Button for mobile/quick access - Only show for reminders tab */}
+      {activeTab === 'reminders' && (
       <button
         onClick={() => setShowForm(true)}
         className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-200 z-50 flex items-center justify-center text-2xl"
@@ -781,9 +814,10 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
       >
         +
       </button>
+      )}
 
-      {/* Reminder Form Modal */}
-      {showForm && (
+      {/* Reminder Form Modal - Only show for reminders tab */}
+      {activeTab === 'reminders' && showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <ReminderForm
@@ -797,5 +831,8 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
         </div>
       )}
     </div>
+    </div>
   );
 };
+
+export default RemindersPage;

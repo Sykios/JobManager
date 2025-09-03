@@ -212,7 +212,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
     title: string;
     description: string;
     reminder_date: string;
-    reminder_time: string;
+    reminder_time?: string; // Made optional
     reminder_type: ReminderType;
     priority: ReminderPriority;
     application_id?: number;
@@ -221,11 +221,12 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
     recurrence_pattern?: string;
   }) => {
     try {
-      const reminderDateTime = new Date(`${formData.reminder_date}T${formData.reminder_time}`);
-      
       const reminderData = {
         ...formData,
-        reminder_date: reminderDateTime.toISOString(),
+        reminder_date: formData.reminder_date, // Keep as date string
+        reminder_time: formData.reminder_time && formData.reminder_time.trim() !== '' 
+          ? formData.reminder_time 
+          : undefined, // Make time optional
         application_id: formData.application_id || undefined
       };
 
@@ -251,12 +252,11 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
 
   const handleEditReminder = (reminder: ReminderModel) => {
     setEditingReminder(reminder);
-    const date = new Date(reminder.reminder_date);
     setReminderFormInitialData({
       title: reminder.title,
       description: reminder.description || '',
-      reminder_date: date.toISOString().split('T')[0],
-      reminder_time: date.toTimeString().slice(0, 5),
+      reminder_date: reminder.reminder_date, // Already just date
+      reminder_time: reminder.reminder_time || '', // Use separate time field
       reminder_type: reminder.reminder_type,
       priority: reminder.priority,
       application_id: reminder.application_id,
