@@ -2,8 +2,135 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { setupDatabase, initializeDatabase, getDatabase } from '../database';
+import { SyncService, SyncConfig } from '../services/SyncService';
+import { createAuthService, getAuthService, AuthConfig } from '../services/AuthService';
+import { v4 as uuidv4 } from 'uuid';
 
-// Enable live reload for Electron in development
+// Load environment variables
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+/**
+ * Handle deep link URLs for authentication callbacks
+ */
+const handleDeepLink = async (url: string): Promise<void> => {
+  console.log('Deep link received:', url);
+  
+  try {
+    const parsedUrl = new URL(url);
+    
+    if (parsedUrl.protocol === 'jobmanager:' && parsedUrl.hostname === 'auth') {
+      // Extract auth tokens from the URL fragment
+      const fragment = parsedUrl.hash.substring(1); // Remove the # character
+      const params = new URLSearchParams(fragment);
+      
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const expiresAt = params.get('expires_at');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+      
+      // Check for errors first
+      if (error) {
+        console.error('Magic link error:', error, errorDescription);
+        if (mainWindow) {
+          mainWindow.webContents.send('auth:magic-link-error', errorDescription || error);
+        }
+        return;
+      }
+      
+      if (accessToken && refreshToken) {
+        console.log('Processing magic link authentication...');
+        
+        // Manually set the session in Supabase
+        if (authService) {
+          try {
+            // Use the tokens to establish a session
+            const { data, error } = await (authService as any).supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (error) {
+              console.error('Error setting session from magic link:', error);
+              if (mainWindow) {
+                mainWindow.webContents.send('auth:magic-link-error', error.message);
+              }
+            } else {
+              console.log('Magic link authentication successful!');
+              // Notify the renderer that authentication was successful
+              if (mainWindow) {
+                mainWindow.webContents.send('auth:magic-link-success', data.user);
+              }
+            }
+          } catch (error) {
+            console.error('Exception during magic link processing:', error);
+            if (mainWindow) {
+              mainWindow.webContents.send('auth:magic-link-error', 'Authentication failed');
+            }
+          }
+        } else {
+          console.error('Auth service not available for magic link processing');
+          if (mainWindow) {
+            mainWindow.webContents.send('auth:magic-link-error', 'Auth service not ready');
+          }
+        }
+      } else {
+        console.error('Invalid magic link - missing tokens');
+        if (mainWindow) {
+          mainWindow.webContents.send('auth:magic-link-error', 'Invalid authentication link');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error processing deep link:', error);
+    if (mainWindow) {
+      mainWindow.webContents.send('auth:magic-link-error', 'Failed to process authentication link');
+    }
+  }
+};
+
+// Register custom protocol for deep linking
+if (!app.isDefaultProtocolClient('jobmanager')) {
+  // Set as default protocol client for jobmanager:// URLs
+  app.setAsDefaultProtocolClient('jobmanager');
+}
+
+// Handle deep links when app is already running
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
+
+// Handle deep links when app is not running (Windows)
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+  // Someone tried to run a second instance, focus our window instead
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+  
+  // Check for deep link in command line arguments
+  const deepLink = commandLine.find(arg => arg.startsWith('jobmanager://'));
+  if (deepLink) {
+    handleDeepLink(deepLink);
+  }
+});
+
+// Ensure single instance (required for deep link handling)
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  // Continue with app initialization...
+}
+
+// Global auth and sync service instances
+let authService: ReturnType<typeof createAuthService> | null = null;
+let syncService: SyncService | null = null;
+let mainWindow: BrowserWindow;
+let ipcHandlersSetup = false; // Guard to prevent duplicate IPC handler registration
 if (process.env.NODE_ENV === 'development') {
   try {
     require('electron-reload')(__dirname, {
@@ -15,7 +142,61 @@ if (process.env.NODE_ENV === 'development') {
   }
 }
 
-let mainWindow: BrowserWindow;
+/**
+ * Initialize Auth Service
+ */
+const initializeAuthService = async (): Promise<void> => {
+  try {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+    console.log('Environment check:');
+    console.log('SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing');
+    console.log('SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing');
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase credentials missing, running without authentication');
+      console.warn('Expected SUPABASE_URL and SUPABASE_ANON_KEY in environment');
+      return;
+    }
+
+    const authConfig: AuthConfig = {
+      supabaseUrl,
+      supabaseAnonKey,
+    };
+
+    authService = createAuthService(authConfig);
+    await authService.initialize();
+    
+    console.log('Auth service initialized successfully');
+  } catch (error) {
+    console.warn('Auth service initialization failed:', error);
+  }
+};
+
+/**
+ * Initialize Sync Service
+ */
+const initializeSyncService = async (): Promise<void> => {
+  try {
+    const db = getDatabase();
+    
+    // Sync configuration
+    const syncConfig: SyncConfig = {
+      apiBaseUrl: process.env.SYNC_API_URL || 'https://your-vercel-app.vercel.app',
+      enableSync: process.env.ENABLE_SYNC !== 'false', // Default to true unless explicitly disabled
+    };
+
+    syncService = new SyncService(db, syncConfig);
+    await syncService.initialize();
+    
+    console.log('Sync service initialized successfully');
+  } catch (error) {
+    console.warn('Sync service initialization failed, continuing in offline mode:', error);
+    // Continue app initialization even if sync fails - just disable sync
+    syncService = null;
+  }
+};
 
 const createWindow = (): void => {
   // Create the browser window
@@ -55,6 +236,203 @@ const createWindow = (): void => {
 
 // Set up IPC handlers
 const setupIpcHandlers = (): void => {
+  // Prevent duplicate handler registration
+  if (ipcHandlersSetup) {
+    console.log('IPC handlers already set up, skipping...');
+    return;
+  }
+  
+  console.log('Setting up IPC handlers...');
+  ipcHandlersSetup = true;
+
+  // Remove all existing handlers first to prevent duplicates
+  const handlersToRemove = [
+    'auth:sign-up', 'auth:sign-in', 'auth:sign-out', 'auth:magic-link', 'auth:reset-password', 
+    'auth:update-password', 'auth:get-session', 'auth:get-user', 'auth:refresh',
+    'sync:status', 'sync:config:get', 'sync:config:update', 'sync:manual', 
+    'sync:shutdown', 'sync:retry-connection', 'sync:trigger', 'sync:configure',
+    'app:quit-after-sync', 'file:upload', 'file:save', 'file:read', 'file:delete', 
+    'file:openPath', 'file:open', 'db:execute', 'db:query', 'app:version',
+    'window:minimize', 'window:maximize', 'window:close'
+  ];
+  
+  handlersToRemove.forEach(handler => {
+    ipcMain.removeAllListeners(handler);
+  });
+
+    // Test deep link handler (for development testing)
+  ipcMain.handle('test:deep-link', async (event, testUrl: string) => {
+    console.log('Testing deep link handler with URL:', testUrl);
+    await handleDeepLink(testUrl);
+    return { success: true };
+  });
+
+  // Auth operations
+  ipcMain.handle('auth:sign-up', async (event, email: string, password: string) => {
+    try {
+      if (!authService) {
+        return { user: null, session: null, error: { message: 'Auth service not available' } };
+      }
+      return await authService.signUp(email, password);
+    } catch (error) {
+      console.error('Auth sign-up error:', error);
+      return { user: null, session: null, error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:sign-in', async (event, email: string, password: string) => {
+    try {
+      if (!authService) {
+        return { user: null, session: null, error: { message: 'Auth service not available' } };
+      }
+      const result = await authService.signIn(email, password);
+      
+      // If sign-in successful, reinitialize sync service
+      if (result.session && !result.error) {
+        console.log('User signed in, reinitializing sync service...');
+        await initializeSyncService();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Auth sign-in error:', error);
+      return { user: null, session: null, error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:sign-out', async () => {
+    try {
+      if (!authService) {
+        return { error: { message: 'Auth service not available' } };
+      }
+      
+      const result = await authService.signOut();
+      
+      // Disable sync when user signs out
+      if (syncService) {
+        await syncService.updateConfig({ enableSync: false });
+        syncService = null;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Auth sign-out error:', error);
+      return { error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:magic-link', async (event, email: string) => {
+    try {
+      if (!authService) {
+        return { error: { message: 'Auth service not available' } };
+      }
+      return await authService.signInWithMagicLink(email);
+    } catch (error) {
+      console.error('Auth magic-link error:', error);
+      return { error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:reset-password', async (event, email: string) => {
+    try {
+      if (!authService) {
+        return { error: { message: 'Auth service not available' } };
+      }
+      return await authService.resetPassword(email);
+    } catch (error) {
+      console.error('Auth reset-password error:', error);
+      return { error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:update-password', async (event, password: string) => {
+    try {
+      if (!authService) {
+        return { user: null, error: { message: 'Auth service not available' } };
+      }
+      return await authService.updatePassword(password);
+    } catch (error) {
+      console.error('Auth update-password error:', error);
+      return { user: null, error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  ipcMain.handle('auth:get-session', async () => {
+    try {
+      if (!authService) {
+        return null;
+      }
+      return authService.getCurrentSession();
+    } catch (error) {
+      console.error('Auth get-session error:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('auth:get-user', async () => {
+    try {
+      if (!authService) {
+        return null;
+      }
+      return authService.getCurrentUser();
+    } catch (error) {
+      console.error('Auth get-user error:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('auth:refresh', async () => {
+    try {
+      if (!authService) {
+        return { session: null, error: { message: 'Auth service not available' } };
+      }
+      return await authService.refreshSession();
+    } catch (error) {
+      console.error('Auth refresh error:', error);
+      return { session: null, error: { message: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+  });
+
+  // Persistent login handlers
+  ipcMain.handle('auth:set-keep-logged-in', async (event, keepLoggedIn: boolean) => {
+    try {
+      if (!authService) {
+        return { success: false, error: 'Auth service not available' };
+      }
+      authService.setKeepLoggedIn(keepLoggedIn);
+      return { success: true };
+    } catch (error) {
+      console.error('Set keep logged in error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('auth:get-keep-logged-in', async () => {
+    try {
+      if (!authService) {
+        return false;
+      }
+      return authService.getKeepLoggedIn();
+    } catch (error) {
+      console.error('Get keep logged in error:', error);
+      return false;
+    }
+  });
+
+  // Clear session handler for when keep logged in is disabled
+  ipcMain.handle('auth:clear-session', async () => {
+    try {
+      if (!authService) {
+        return { success: false, error: 'Auth service not available' };
+      }
+      await authService.clearSession();
+      return { success: true };
+    } catch (error) {
+      console.error('Clear session error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
   // A helper to normalize whatever the renderer sends into a Buffer
   function toBuffer(data: any): Buffer {
     if (data instanceof Buffer) return data;
@@ -67,6 +445,135 @@ const setupIpcHandlers = (): void => {
     }
     throw new Error('Unsupported data type for save');
   }
+
+  // Sync operations
+  ipcMain.handle('sync:status', async () => {
+    try {
+      if (!syncService) {
+        return { 
+          isConfigured: false, 
+          lastSync: null, 
+          pendingItems: 0,
+          isOnline: false,
+          syncEnabled: false,
+          syncAvailable: false,
+        };
+      }
+      return await syncService.getSyncStatus();
+    } catch (error) {
+      console.error('Sync status error:', error);
+      return { 
+        isConfigured: false, 
+        lastSync: null, 
+        pendingItems: 0,
+        isOnline: false,
+        syncEnabled: false,
+        syncAvailable: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcMain.handle('sync:config:get', async () => {
+    try {
+      if (!syncService) {
+        return null;
+      }
+      return syncService.getConfig();
+    } catch (error) {
+      console.error('Get sync config error:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('sync:config:update', async (event, config: Partial<SyncConfig>) => {
+    try {
+      if (!syncService) {
+        return { success: false, error: 'Sync service not available - running in offline mode' };
+      }
+      await syncService.updateConfig(config);
+      return { success: true };
+    } catch (error) {
+      console.error('Update sync config error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  });
+
+  ipcMain.handle('sync:manual', async () => {
+    try {
+      if (!syncService) {
+        return {
+          success: false,
+          syncedTables: [],
+          errors: [{
+            table: 'system',
+            recordId: 0,
+            operation: 'manual_sync',
+            error: 'Sync service not available - running in offline mode',
+            retryable: false,
+          }],
+          lastSyncTime: new Date().toISOString(),
+        };
+      }
+      const result = await syncService.triggerSync();
+      return result;
+    } catch (error) {
+      console.error('Manual sync error:', error);
+      return {
+        success: false,
+        syncedTables: [],
+        errors: [{
+          table: 'system',
+          recordId: 0,
+          operation: 'manual_sync',
+          error: error instanceof Error ? error.message : 'Unknown error occurred',
+          retryable: true,
+        }],
+        lastSyncTime: new Date().toISOString(),
+      };
+    }
+  });
+
+  // Retry connection handler
+  ipcMain.handle('sync:retry-connection', async () => {
+    try {
+      if (!syncService) {
+        return { 
+          success: false, 
+          message: 'Sync service not available - app running in offline mode' 
+        };
+      }
+      
+      const connected = await syncService.retryConnection();
+      if (connected) {
+        return { 
+          success: true, 
+          message: 'Connection restored successfully, sync re-enabled' 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: 'Connection retry failed - still running in offline mode' 
+        };
+      }
+    } catch (error) {
+      console.error('Connection retry error:', error);
+      return { 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Connection retry failed' 
+      };
+    }
+  });
+
+  ipcMain.handle('sync:shutdown', async (event, onProgress?: (message: string) => void) => {
+    if (!syncService) {
+      return { success: true, syncedTables: [], errors: [], lastSyncTime: new Date().toISOString() };
+    }
+    return await syncService.performShutdownSync(onProgress);
+  });
 
   // File upload handler for application attachments
   ipcMain.handle('file:upload', async (event, args: {
@@ -261,6 +768,7 @@ const setupIpcHandlers = (): void => {
       mainWindow.close();
     }
   });
+
 };
 
 // This method will be called when Electron has finished initialization
@@ -268,6 +776,12 @@ app.whenReady().then(async () => {
   try {
     // Initialize database
     await setupDatabase(false); // Set to true if you want demo data
+    
+    // Initialize auth service
+    await initializeAuthService();
+    
+    // Initialize sync service (depends on auth)
+    await initializeSyncService();
     
     // Set up IPC handlers
     setupIpcHandlers();
@@ -288,10 +802,46 @@ app.whenReady().then(async () => {
 });
 
 // Quit when all windows are closed, except on macOS
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// Handle app quit with sync check
+app.on('before-quit', async (event) => {
+  if (syncService) {
+    try {
+      const status = await syncService.getSyncStatus();
+      // Only prevent quit if sync is enabled, available, and has pending items
+      if (status.pendingItems > 0 && status.syncEnabled && status.syncAvailable) {
+        // If we have pending items and sync is available, prevent quitting and let the renderer handle the sync dialog
+        event.preventDefault();
+        
+        // Send a message to the renderer to show the shutdown sync dialog
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('show-shutdown-sync-dialog');
+        }
+        return;
+      } else if (status.pendingItems > 0 && (!status.syncAvailable || !status.syncEnabled)) {
+        // If we have pending items but sync is not available/enabled, just inform and quit
+        console.log('Quitting with pending changes - sync not available or disabled');
+      }
+    } catch (error) {
+      console.error('Error checking sync status before quit:', error);
+      // Continue with quit if we can't check status
+    }
+  }
+  
+  // Cleanup sync service if no pending items, sync disabled, or sync unavailable
+  if (syncService) {
+    await syncService.shutdown();
+  }
+});
+
+// Handle forced quit after sync completion
+ipcMain.handle('app:quit-after-sync', () => {
+  app.quit();
 });
 
 // Security: Prevent new window creation

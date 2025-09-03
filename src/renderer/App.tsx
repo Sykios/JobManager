@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
@@ -8,14 +8,28 @@ import { Calendar } from './pages/Calendar';
 import { RemindersPage } from './pages/Reminders';
 import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ShutdownSyncDialog } from './components/common/ShutdownSyncDialog';
+import { AuthGuard } from './components/AuthGuard';
+import { UserSettings } from './components/UserSettings';
 import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
+import { AuthProvider } from './context/AuthContext';
 
 export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [pageState, setPageState] = useState<any>(null);
+  const [showShutdownDialog, setShowShutdownDialog] = useState(false);
+
+  // Listen for shutdown sync dialog trigger from main process
+  useEffect(() => {
+    const cleanup = window.electronAPI.onShowShutdownSyncDialog(() => {
+      setShowShutdownDialog(true);
+    });
+
+    return cleanup;
+  }, []);
 
   const handlePageChange = (page: string | PageType, state?: any) => {
     setCurrentPage(page as PageType);
@@ -24,6 +38,17 @@ const App: React.FC = () => {
 
   const handleError = (error: Error, errorInfo: any) => {
     console.error('App ErrorBoundary caught error:', error, errorInfo);
+  };
+
+  const handleShutdownSyncComplete = () => {
+    setShowShutdownDialog(false);
+    // Tell the main process to quit the app
+    window.electronAPI.quitAfterSync();
+  };
+
+  const handleShutdownSyncCancel = () => {
+    setShowShutdownDialog(false);
+    // User cancelled, so we don't quit the app
   };
 
   const renderCurrentPage = () => {
@@ -156,7 +181,22 @@ const App: React.FC = () => {
           </ErrorBoundary>
         );
       case 'settings':
-        return <div className="p-6 bg-white rounded-lg shadow-sm"><h1 className="text-2xl font-bold">Einstellungen</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>;
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler auf der Einstellungsseite</h1>
+                <p>Es gab ein Problem beim Laden der Einstellungen.</p>
+                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                  Zurück zum Dashboard
+                </button>
+              </div>
+            }
+          >
+            <UserSettings />
+          </ErrorBoundary>
+        );
       default:
         return <Dashboard />;
     }
@@ -226,13 +266,24 @@ const App: React.FC = () => {
         </div>
       }
     >
-      <DatabaseProvider>
-        <FileServiceProvider>
-          <Layout currentPage={currentPage} onPageChange={handlePageChange}>
-            {renderCurrentPage()}
-          </Layout>
-        </FileServiceProvider>
-      </DatabaseProvider>
+      <AuthProvider>
+        <AuthGuard>
+          <DatabaseProvider>
+            <FileServiceProvider>
+              <Layout currentPage={currentPage} onPageChange={handlePageChange}>
+                {renderCurrentPage()}
+              </Layout>
+              
+              {/* Shutdown Sync Dialog */}
+              <ShutdownSyncDialog
+                isOpen={showShutdownDialog}
+                onComplete={handleShutdownSyncComplete}
+                onCancel={handleShutdownSyncCancel}
+              />
+            </FileServiceProvider>
+          </DatabaseProvider>
+        </AuthGuard>
+      </AuthProvider>
     </ErrorBoundary>
   );
 };

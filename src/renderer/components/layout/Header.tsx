@@ -1,12 +1,15 @@
 import React from 'react';
 import { Button } from '../ui/Button';
 import { PageType } from './Layout';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   onNavigate?: (page: PageType) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
+  
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -52,16 +55,25 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             </Button>
           )}
           
-          <button className="p-2 text-gray-400 hover:text-gray-600 relative">
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zm-5-2h10v-10H10v10z" />
-            </svg>
-            <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
-          </button>
-          
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-            <span className="text-sm font-medium text-gray-700">User</span>
+          {/* User Profile Area - Clickable to go to settings */}
+          <div 
+            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+            onClick={() => onNavigate?.('settings')}
+            title="Profil & Einstellungen"
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium text-sm">
+                {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-700">
+                {user?.email ? user.email.split('@')[0] : 'User'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {user?.email?.includes('dev@') ? 'Development' : 'Benutzer'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
