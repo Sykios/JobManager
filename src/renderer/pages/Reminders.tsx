@@ -133,7 +133,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     overdue: 0,
     dueToday: 0,
     upcoming: 0,
-    byPriority: { low: 0, medium: 0, high: 0, urgent: 0 } as Record<ReminderPriority, number>
+    byPriority: { 1: 0, 2: 0, 3: 0, 4: 0 } as Record<ReminderPriority, number>
   });
 
   // Load initial data on mount
@@ -311,12 +311,22 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
 
   const getPriorityColor = (priority: ReminderPriority) => {
     const colors = {
-      low: 'text-green-600 bg-green-100',
-      medium: 'text-yellow-600 bg-yellow-100',
-      high: 'text-orange-600 bg-orange-100',
-      urgent: 'text-red-600 bg-red-100'
+      1: 'text-green-600 bg-green-100',
+      2: 'text-yellow-600 bg-yellow-100',
+      3: 'text-orange-600 bg-orange-100',
+      4: 'text-red-600 bg-red-100'
     };
-    return colors[priority];
+    return colors[priority] || colors[2]; // default to medium
+  };
+
+  const getPriorityLabel = (priority: ReminderPriority): string => {
+    const labels = {
+      1: 'Niedrig',
+      2: 'Mittel',
+      3: 'Hoch',
+      4: 'Dringend'
+    };
+    return labels[priority] || `Priorität ${priority}`;
   };
 
   const getTypeIcon = (type: ReminderType) => {
@@ -558,15 +568,15 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             📅 Geplant ({stats.upcoming})
           </Button>
           <Button
-            variant={filters.priority === 'urgent' ? 'primary' : 'secondary'}
+            variant={filters.priority === 4 ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setFilters(prev => ({ 
               ...prev, 
-              priority: filters.priority === 'urgent' ? undefined : 'urgent' 
+              priority: filters.priority === 4 ? undefined : 4 
             }))}
             className="text-sm"
           >
-            🔥 Dringend ({stats.byPriority.urgent})
+            🔥 Dringend ({stats.byPriority[4]})
           </Button>
           <Button
             variant="ghost"
@@ -609,14 +619,14 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             value={filters.priority || ''}
             onChange={(e) => setFilters(prev => ({ 
               ...prev, 
-              priority: e.target.value as ReminderPriority || undefined 
+              priority: e.target.value ? parseInt(e.target.value) as ReminderPriority : undefined 
             }))}
             options={[
               { value: '', label: 'Alle Prioritäten' },
-              { value: 'urgent', label: '🔥 Dringend' },
-              { value: 'high', label: '🟠 Hoch' },
-              { value: 'medium', label: '🟡 Mittel' },
-              { value: 'low', label: '🟢 Niedrig' }
+              { value: '4', label: '🔥 Dringend' },
+              { value: '3', label: '🟠 Hoch' },
+              { value: '2', label: '🟡 Mittel' },
+              { value: '1', label: '🟢 Niedrig' }
             ]}
             fullWidth
           />
@@ -708,7 +718,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             )}
             {filters.priority && (
               <Badge variant="orange" className="text-xs">
-                Priorität: {filters.priority}
+                Priorität: {getPriorityLabel(filters.priority)}
                 <button 
                   onClick={() => setFilters(prev => ({ ...prev, priority: undefined }))}
                   className="ml-1 text-blue-600 hover:text-blue-800"

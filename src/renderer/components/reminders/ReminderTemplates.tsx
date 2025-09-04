@@ -86,22 +86,22 @@ export const ReminderTemplates: React.FC<ReminderTemplatesProps> = ({
 
   const getPriorityLabel = (priority: ReminderPriority): string => {
     const labels = {
-      low: 'Niedrig',
-      medium: 'Mittel',
-      high: 'Hoch',
-      urgent: 'Dringend'
+      1: 'Niedrig',
+      2: 'Mittel',
+      3: 'Hoch',
+      4: 'Dringend'
     };
-    return labels[priority] || priority;
+    return labels[priority] || `Priorität ${priority}`;
   };
 
   const getPriorityColor = (priority: ReminderPriority): string => {
     const colors = {
-      low: 'bg-gray-100 text-gray-800',
-      medium: 'bg-blue-100 text-blue-800',
-      high: 'bg-orange-100 text-orange-800',
-      urgent: 'bg-red-100 text-red-800'
+      1: 'bg-gray-100 text-gray-800',
+      2: 'bg-blue-100 text-blue-800',
+      3: 'bg-orange-100 text-orange-800',
+      4: 'bg-red-100 text-red-800'
     };
-    return colors[priority] || colors.medium;
+    return colors[priority] || colors[2]; // default to medium
   };
 
   const getTypeColor = (type: ReminderType): string => {
@@ -341,7 +341,7 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
     description_template: initialData.description_template || '',
     reminder_type: initialData.reminder_type || 'custom',
     default_notification_time: initialData.default_notification_time || 60,
-    default_priority: initialData.default_priority || 'medium',
+    default_priority: initialData.default_priority || 2,
     trigger_conditions: initialData.trigger_conditions || ''
   });
 
@@ -430,13 +430,16 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
 
             <Select
               label="Standard-Priorität"
-              value={formData.default_priority}
-              onChange={handleInputChange('default_priority')}
+              value={formData.default_priority.toString()}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) as ReminderPriority;
+                setFormData(prev => ({ ...prev, default_priority: value }));
+              }}
               options={[
-                { value: 'low', label: 'Niedrig' },
-                { value: 'medium', label: 'Mittel' },
-                { value: 'high', label: 'Hoch' },
-                { value: 'urgent', label: 'Dringend' },
+                { value: '1', label: 'Niedrig' },
+                { value: '2', label: 'Mittel' },
+                { value: '3', label: 'Hoch' },
+                { value: '4', label: 'Dringend' },
               ]}
               fullWidth
             />

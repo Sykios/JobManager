@@ -47,7 +47,7 @@ export const ReminderForm: React.FC<ReminderFormProps> = ({
     reminder_date: '',
     reminder_time: '09:00', // Default time, will be cleaned if not wanted
     reminder_type: 'custom' as ReminderType,
-    priority: 'medium' as ReminderPriority,
+    priority: 2 as ReminderPriority, // 2 = medium
     email_notification_enabled: true,
     notification_time: 60,
     recurrence_pattern: undefined,
@@ -326,13 +326,16 @@ export const ReminderForm: React.FC<ReminderFormProps> = ({
 
                 <Select
                   label="Priorität"
-                  value={formData.priority}
-                  onChange={handleInputChange('priority')}
+                  value={formData.priority.toString()}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) as ReminderPriority;
+                    setFormData(prev => ({ ...prev, priority: value }));
+                  }}
                   options={[
-                    { value: 'low', label: 'Niedrig' },
-                    { value: 'medium', label: 'Mittel' },
-                    { value: 'high', label: 'Hoch' },
-                    { value: 'urgent', label: 'Dringend' },
+                    { value: '1', label: 'Niedrig' },
+                    { value: '2', label: 'Mittel' },
+                    { value: '3', label: 'Hoch' },
+                    { value: '4', label: 'Dringend' },
                   ]}
                   fullWidth
                 />

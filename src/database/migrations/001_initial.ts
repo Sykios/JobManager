@@ -128,7 +128,7 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
       last_synced_at DATETIME,
       email_notification_enabled BOOLEAN DEFAULT TRUE,
       notification_time INTEGER DEFAULT 60, -- minutes before reminder
-      priority INTEGER DEFAULT 2 CHECK(priority IN (1, 2, 3, 4, 5)), -- 1=low, 2=medium, 3=high, 4=urgent, 5=critical
+      priority INTEGER DEFAULT 2 CHECK(priority IN (1, 2, 3, 4)), -- 1=low, 2=medium, 3=high, 4=urgent
       recurrence_pattern TEXT, -- JSON string for recurring reminders
       auto_generated BOOLEAN DEFAULT FALSE, -- true for system-generated reminders
       parent_reminder_id INTEGER, -- for recurring reminders
@@ -222,7 +222,7 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
       description_template TEXT,
       reminder_type TEXT NOT NULL,
       default_notification_time INTEGER DEFAULT 60,
-      default_priority TEXT DEFAULT 'medium',
+      default_priority INTEGER DEFAULT 2,
       trigger_conditions TEXT, -- JSON string for auto-generation conditions
       is_system_template BOOLEAN DEFAULT FALSE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -753,11 +753,11 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
   await db.exec(`
     INSERT OR IGNORE INTO reminder_templates (name, title_template, description_template, reminder_type, default_notification_time, default_priority, trigger_conditions, is_system_template)
     VALUES 
-    ('Application Follow-up', 'Follow-up: {position}', 'Follow up on your application for {position} at {company}', 'follow_up', 10080, 'medium', '{"days_after_application": 7}', TRUE),
-    ('Interview Preparation', 'Interview: {position}', 'Prepare for your interview for {position} at {company}', 'interview', 2880, 'high', '{"status": "interview"}', TRUE),
-    ('Application Deadline', 'Deadline: {position}', 'Application deadline for {position} at {company}', 'deadline', 1440, 'high', '{"deadline_field": true}', TRUE),
-    ('Post-Interview Follow-up', 'Post-Interview Follow-up: {position}', 'Send thank you note and follow up after interview for {position}', 'follow_up', 4320, 'medium', '{"days_after_interview": 3}', TRUE),
-    ('Weekly Application Review', 'Weekly Job Search Review', 'Review and plan your job search activities for the week', 'custom', 60, 'medium', '{"recurrence": "weekly"}', TRUE)
+    ('Application Follow-up', 'Follow-up: {position}', 'Follow up on your application for {position} at {company}', 'follow_up', 10080, 2, '{"days_after_application": 7}', TRUE),
+    ('Interview Preparation', 'Interview: {position}', 'Prepare for your interview for {position} at {company}', 'interview', 2880, 3, '{"status": "interview"}', TRUE),
+    ('Application Deadline', 'Deadline: {position}', 'Application deadline for {position} at {company}', 'deadline', 1440, 3, '{"deadline_field": true}', TRUE),
+    ('Post-Interview Follow-up', 'Post-Interview Follow-up: {position}', 'Send thank you note and follow up after interview for {position}', 'follow_up', 4320, 2, '{"days_after_interview": 3}', TRUE),
+    ('Weekly Application Review', 'Weekly Job Search Review', 'Review and plan your job search activities for the week', 'custom', 60, 2, '{"recurrence": "weekly"}', TRUE)
   `);
 
   // Insert default user settings
@@ -767,7 +767,7 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     ('notification_preferences', '{"email_notifications": true, "system_notifications": true, "reminder_defaults": {"advance_notice": 60, "work_hours_only": false, "weekend_notifications": true}, "email_preferences": {"daily_digest": false, "urgent_only": false, "summary_time": "09:00"}}', 'notifications'),
     ('sync_settings', '{"auto_sync": true, "sync_interval": 300, "conflict_resolution": "ask"}', 'sync'),
     ('calendar_settings', '{"default_view": "month", "show_completed": false, "color_scheme": "priority"}', 'calendar'),
-    ('reminder_settings', '{"auto_generate": true, "smart_scheduling": true, "default_priority": "medium"}', 'reminders')
+    ('reminder_settings', '{"auto_generate": true, "smart_scheduling": true, "default_priority": 2}', 'reminders')
   `);
 
   console.log('Migration 001_initial completed successfully');

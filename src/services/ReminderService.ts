@@ -580,10 +580,10 @@ export class ReminderService {
       dueToday: allReminders.filter(r => r.isDueToday()).length,
       upcoming: allReminders.filter(r => !r.is_completed && !r.isOverdue() && !r.isDueToday()).length,
       byPriority: {
-        low: allReminders.filter(r => r.priority === 'low').length,
-        medium: allReminders.filter(r => r.priority === 'medium').length,
-        high: allReminders.filter(r => r.priority === 'high').length,
-        urgent: allReminders.filter(r => r.priority === 'urgent').length
+        1: allReminders.filter(r => r.priority === 1).length,
+        2: allReminders.filter(r => r.priority === 2).length,
+        3: allReminders.filter(r => r.priority === 3).length,
+        4: allReminders.filter(r => r.priority === 4).length
       } as Record<ReminderPriority, number>,
       byType: {
         custom: allReminders.filter(r => r.reminder_type === 'custom').length,

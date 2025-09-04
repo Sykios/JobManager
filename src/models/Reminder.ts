@@ -1,5 +1,28 @@
 import { Reminder, ReminderType, ReminderPriority, SyncStatus, RecurrencePattern } from '../types';
 
+// Priority mapping utilities
+export const PRIORITY_LABELS = {
+  1: 'low',
+  2: 'medium', 
+  3: 'high',
+  4: 'urgent'
+} as const;
+
+export const PRIORITY_VALUES = {
+  'low': 1,
+  'medium': 2,
+  'high': 3,
+  'urgent': 4
+} as const;
+
+export function getPriorityLabel(priority: ReminderPriority): string {
+  return PRIORITY_LABELS[priority];
+}
+
+export function getPriorityValue(label: string): ReminderPriority {
+  return (PRIORITY_VALUES[label as keyof typeof PRIORITY_VALUES] || 2) as ReminderPriority;
+}
+
 export class ReminderModel implements Reminder {
   id: number;
   application_id?: number;
@@ -50,7 +73,7 @@ export class ReminderModel implements Reminder {
     this.email_notification_enabled = data.email_notification_enabled !== undefined ? data.email_notification_enabled : true;
     this.notification_time = data.notification_time || 60; // 1 hour default
     this.last_synced_at = data.last_synced_at;
-    this.priority = data.priority || 'medium';
+    this.priority = data.priority || 2; // 2=medium is default
     this.recurrence_pattern = data.recurrence_pattern;
     this.auto_generated = data.auto_generated || false;
     this.parent_reminder_id = data.parent_reminder_id;
@@ -140,7 +163,7 @@ export class ReminderModel implements Reminder {
       errors.push('Ungültiger Erinnerungstyp');
     }
 
-    const validPriorities: ReminderPriority[] = ['low', 'medium', 'high', 'urgent'];
+    const validPriorities: ReminderPriority[] = [1, 2, 3, 4];
     if (!validPriorities.includes(this.priority)) {
       errors.push('Ungültige Priorität');
     }
@@ -205,7 +228,7 @@ export class ReminderModel implements Reminder {
   }
 
   isHighPriority(): boolean {
-    return this.priority === 'high' || this.priority === 'urgent';
+    return this.priority >= 3; // high (3), urgent (4)
   }
 
   isRecurring(): boolean {
@@ -286,20 +309,20 @@ export class ReminderModel implements Reminder {
 
   getPriorityColor(): string {
     const colors = {
-      low: '#10B981',      // green
-      medium: '#F59E0B',   // yellow
-      high: '#F97316',     // orange
-      urgent: '#EF4444'    // red
+      1: '#10B981',      // green - low
+      2: '#F59E0B',      // yellow - medium
+      3: '#F97316',      // orange - high
+      4: '#EF4444',      // red - urgent
     };
     return colors[this.priority];
   }
 
   getPriorityIcon(): string {
     const icons = {
-      low: '📌',
-      medium: '⚡',
-      high: '🔥',
-      urgent: '🚨'
+      1: '📌',      // low
+      2: '⚡',      // medium
+      3: '🔥',      // high
+      4: '�',      // urgent
     };
     return icons[this.priority];
   }

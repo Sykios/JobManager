@@ -93,7 +93,7 @@ export interface StatusHistory {
 
 // Reminder Types
 export type ReminderType = 'deadline' | 'follow_up' | 'interview' | 'custom';
-export type ReminderPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ReminderPriority = 1 | 2 | 3 | 4; // 1=low, 2=medium, 3=high, 4=urgent
 export type SyncStatus = 'pending' | 'synced' | 'error' | 'local_only';
 export type NotificationType = 'system' | 'email' | 'push';
 export type NotificationStatus = 'sent' | 'failed' | 'pending';

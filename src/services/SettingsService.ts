@@ -136,7 +136,7 @@ export class SettingsService {
     return this.getSetting('reminder_settings', {
       auto_generate: true,
       smart_scheduling: true,
-      default_priority: 'medium'
+      default_priority: 2
     });
   }
 
