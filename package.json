@@ -117,8 +117,7 @@
       "provider": "github",
       "owner": "Sykios",
       "repo": "JobManager",
-      "publishAutoUpdate": true,
-      "releaseType": "prerelease"
+      "publishAutoUpdate": true
     },
     "mac": {
       "category": "public.app-category.productivity"

@@ -212,6 +212,9 @@ const initializeAutoUpdater = (): void => {
       return;
     }
 
+    // By default, auto-updater only checks for production releases (vx.x.x)
+    autoUpdater.allowPrerelease = false; // Change to true to include pre-releases
+
     // Set up update events
     autoUpdater.on('checking-for-update', () => {
       console.log('Checking for update...');
