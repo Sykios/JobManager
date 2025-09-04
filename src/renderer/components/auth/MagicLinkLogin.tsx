@@ -11,7 +11,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-  const { user, session, setDevBypass } = useAuth(); // Add setDevBypass
+  const { user, session, setDevBypass, refreshAuthState } = useAuth();
 
   // Load keep logged in preference
   useEffect(() => {
@@ -29,7 +29,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
   // Listen for magic link authentication events
   useEffect(() => {
-    const handleMagicLinkSuccess = (event: any, user: any) => {
+    const handleMagicLinkSuccess = async (event: any, user: any) => {
       console.log('Magic link authentication successful:', user);
       setIsLoading(false);
       setError('');
@@ -41,10 +41,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         window.electronAPI.authSetKeepLoggedIn(true);
       }
       
-      // Trigger success callback after a brief delay to show the success message
-      setTimeout(() => {
-        onSuccess?.();
-      }, 1500);
+      // Refresh auth state to update the context
+      await refreshAuthState();
+      
+      // Trigger success callback immediately since auth state is now updated
+      onSuccess?.();
     };
 
     const handleMagicLinkError = (event: any, errorMessage: string) => {
@@ -67,7 +68,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
         window.electronAPI.removeListener('auth:magic-link-error', handleMagicLinkError);
       }
     };
-  }, [keepLoggedIn, onSuccess]);
+  }, [keepLoggedIn, onSuccess, refreshAuthState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

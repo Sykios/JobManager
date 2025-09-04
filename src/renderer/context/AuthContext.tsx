@@ -39,6 +39,8 @@ interface AuthContextType {
   }>;
   // Add development bypass function
   setDevBypass: (user: User, session: Session) => void;
+  // Add refresh auth state function
+  refreshAuthState: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -218,6 +220,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('jobmanager_keep_logged_in', 'true');
   };
 
+  // Refresh auth state from main process
+  const refreshAuthState = async () => {
+    try {
+      const currentSession = await window.electronAPI.authGetSession();
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+      } else {
+        setSession(null);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error refreshing auth state:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -230,6 +248,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resetPassword,
     updatePassword,
     setDevBypass,
+    refreshAuthState,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
