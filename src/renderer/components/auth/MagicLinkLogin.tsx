@@ -186,14 +186,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           </button>
 
           <div className="text-center">
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>🔒 Secure passwordless authentication</p>
-              <p>✨ Works for both new and existing accounts</p>
-              <p>📱 No passwords to remember or forget</p>
-            </div>
-            
             {/* Development Mode Shortcuts */}
-            {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost' || true) && (
+            {process.env.NODE_ENV === 'development' && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="text-xs text-gray-600 mb-3">🛠️ Development Mode: (ENV: {process.env.NODE_ENV || 'undefined'})</div>
                 <div className="space-y-2">
