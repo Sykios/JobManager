@@ -749,15 +749,15 @@ export async function up(db: Database<sqlite3.Database, sqlite3.Statement>): Pro
     END
   `);
 
-  // Insert default system reminder templates
+  // Insert default system reminder templates (German)
   await db.exec(`
     INSERT OR IGNORE INTO reminder_templates (name, title_template, description_template, reminder_type, default_notification_time, default_priority, trigger_conditions, is_system_template)
     VALUES 
-    ('Application Follow-up', 'Follow-up: {position}', 'Follow up on your application for {position} at {company}', 'follow_up', 10080, 2, '{"days_after_application": 7}', TRUE),
-    ('Interview Preparation', 'Interview: {position}', 'Prepare for your interview for {position} at {company}', 'interview', 2880, 3, '{"status": "interview"}', TRUE),
-    ('Application Deadline', 'Deadline: {position}', 'Application deadline for {position} at {company}', 'deadline', 1440, 3, '{"deadline_field": true}', TRUE),
-    ('Post-Interview Follow-up', 'Post-Interview Follow-up: {position}', 'Send thank you note and follow up after interview for {position}', 'follow_up', 4320, 2, '{"days_after_interview": 3}', TRUE),
-    ('Weekly Application Review', 'Weekly Job Search Review', 'Review and plan your job search activities for the week', 'custom', 60, 2, '{"recurrence": "weekly"}', TRUE)
+    ('Bewerbungsfrist', 'Deadline: {position}', 'Bewerbungsfrist für {position} bei {company}', 'deadline', 1440, 3, '{"deadline_field": true}', TRUE),
+    ('Bewerbung Follow-up', 'Follow-up: {position}', 'Nachfragen zur Bewerbung für {position} bei {company}', 'follow_up', 10080, 2, '{"days_after_application": 7}', TRUE),
+    ('Interview Vorbereitung', 'Interview: {position}', 'Vorbereitung auf das Interview für {position} bei {company}', 'interview', 2880, 3, '{"status": "interview"}', TRUE),
+    ('Post-Interview Follow-up', 'Post-Interview Follow-up: {position}', 'Dankesmail senden und nachfassen nach Interview für {position}', 'follow_up', 4320, 2, '{"days_after_interview": 3}', TRUE),
+    ('Wöchentliche Bewerbungsübersicht', 'Wöchentliche Jobsuche Übersicht', 'Bewerbungsaktivitäten der Woche überprüfen und planen', 'custom', 60, 2, '{"recurrence": "weekly"}', TRUE)
   `);
 
   // Insert default user settings

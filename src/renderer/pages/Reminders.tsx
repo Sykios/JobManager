@@ -367,7 +367,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
               {reminder.title}
             </h3>
             <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(reminder.priority)}`}>
-              {reminder.priority}
+              {getPriorityLabel(reminder.priority)}
             </span>
             {reminder.isSnoozed() && (
               <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded-full">

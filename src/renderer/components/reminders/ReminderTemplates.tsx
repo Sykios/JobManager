@@ -447,13 +447,18 @@ const TemplateForm: React.FC<TemplateFormProps> = ({
             <Select
               label="Standard-Benachrichtigung"
               value={formData.default_notification_time.toString()}
-              onChange={handleInputChange('default_notification_time')}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                setFormData(prev => ({ ...prev, default_notification_time: value }));
+              }}
               options={[
                 { value: '15', label: '15 Minuten' },
                 { value: '30', label: '30 Minuten' },
                 { value: '60', label: '1 Stunde' },
                 { value: '120', label: '2 Stunden' },
                 { value: '1440', label: '1 Tag' },
+                { value: '2880', label: '2 Tage' },
+                { value: '4320', label: '3 Tage' },
                 { value: '10080', label: '1 Woche' },
               ]}
               fullWidth
