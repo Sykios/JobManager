@@ -1,78 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CompanyModel } from '../../models/Company';
 import { Company } from '../../types';
-import { CompanyForm } from '../components/companies';
-
-// Simple CompanyListItem component for the page
-const CompanyListItem: React.FC<{
-  company: Company;
-  onEdit: (company: Company) => void;
-  onDelete: (company: Company) => void;
-  onSelect?: (company: Company) => void;
-  isSelected?: boolean;
-}> = ({ company, onEdit, onDelete, onSelect, isSelected }) => {
-  return (
-    <div className={`company-item ${isSelected ? 'selected' : ''}`}>
-      <div className="company-content" onClick={() => onSelect?.(company)}>
-        <div className="company-header">
-          <h3 className="company-name">{company.name}</h3>
-          {company.website && (
-            <a 
-              href={company.website} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="company-website"
-              onClick={(e) => e.stopPropagation()}
-            >
-              🌐
-            </a>
-          )}
-        </div>
-        
-        <div className="company-details">
-          {company.industry && (
-            <span className="company-industry">🏢 {company.industry}</span>
-          )}
-          {company.location && (
-            <span className="company-location">📍 {company.location}</span>
-          )}
-          {company.size && (
-            <span className="company-size">👥 {company.size}</span>
-          )}
-        </div>
-        
-        {company.description && (
-          <p className="company-description">{company.description}</p>
-        )}
-      </div>
-      
-      <div className="company-actions">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(company);
-          }}
-          className="action-btn edit"
-          title="Bearbeiten"
-        >
-          ✏️
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(company);
-          }}
-          className="action-btn delete"
-          title="Löschen"
-        >
-          🗑️
-        </button>
-      </div>
-    </div>
-  );
-};
+import { CompanyForm, CompanyCard } from '../components/companies';
 
 // Types for IPC-based company operations
 interface CompanyFilters {
@@ -102,7 +31,7 @@ interface CompanyStatistics {
   recentCompanies: number;
 }
 
-export const CompaniesPage: React.FC = () => {
+export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) => void }> = ({ onNavigate }) => {
   // State management
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
@@ -506,122 +435,6 @@ export const CompaniesPage: React.FC = () => {
             </div>
         </div>
       </div>
-
-      <style>{`
-        .company-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding: 16px;
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          margin-bottom: 12px;
-          background: white;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .company-item:hover {
-          border-color: #007acc;
-          box-shadow: 0 2px 8px rgba(0, 122, 204, 0.1);
-        }
-
-        .company-item.selected {
-          border-color: #007acc;
-          background-color: #f0f8ff;
-        }
-
-        .company-content {
-          flex: 1;
-        }
-
-        .company-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 8px;
-        }
-
-        .company-name {
-          font-size: 18px;
-          font-weight: 600;
-          color: #333;
-          margin: 0;
-        }
-
-        .company-website {
-          text-decoration: none;
-          font-size: 16px;
-          opacity: 0.7;
-          transition: opacity 0.2s ease;
-        }
-
-        .company-website:hover {
-          opacity: 1;
-        }
-
-        .company-details {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 16px;
-          margin-bottom: 8px;
-          font-size: 14px;
-          color: #666;
-        }
-
-        .company-details span {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .company-description {
-          font-size: 14px;
-          color: #666;
-          line-height: 1.4;
-          margin: 0;
-          max-width: 600px;
-        }
-
-        .company-actions {
-          display: flex;
-          gap: 8px;
-          margin-left: 16px;
-        }
-
-        .action-btn {
-          background: none;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          padding: 8px;
-          cursor: pointer;
-          font-size: 14px;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 32px;
-          height: 32px;
-        }
-
-        .action-btn:hover {
-          background-color: #f5f5f5;
-        }
-
-        .action-btn.edit:hover {
-          border-color: #007acc;
-          background-color: #f0f8ff;
-        }
-
-        .action-btn.delete:hover {
-          border-color: #dc3545;
-          background-color: #fff5f5;
-        }
-
-        .companies-list {
-          flex: 1;
-        }
-      `}</style>
     </div>
   );
 };  // Render duplicates panel
@@ -761,15 +574,20 @@ export const CompaniesPage: React.FC = () => {
             <p>Unternehmen werden geladen...</p>
           </div>
         ) : (
-          <div className="companies-list">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredCompanies.map(company => (
-              <CompanyListItem
+              <CompanyCard
                 key={company.id}
                 company={company}
                 onEdit={handleEditCompany}
-                onDelete={handleDeleteCompany}
-                onSelect={setSelectedCompany}
-                isSelected={selectedCompany?.id === company.id}
+                onView={(company) => {
+                  if (onNavigate) {
+                    onNavigate('company-detail', { company, companyId: company.id });
+                  } else {
+                    setSelectedCompany(selectedCompany?.id === company.id ? null : company);
+                  }
+                }}
+                className={selectedCompany?.id === company.id ? 'ring-2 ring-blue-500' : ''}
               />
             ))}
           </div>

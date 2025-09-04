@@ -3,7 +3,9 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
+import { ContactDetail } from './pages/contacts/ContactDetail';
 import { CompaniesPage } from './pages/Companies';
+import { CompanyDetail } from './pages/companies/CompanyDetail';
 import { Calendar } from './pages/Calendar';
 import { RemindersPage } from './pages/Reminders';
 import FilesPage from './pages/FilesPage';
@@ -15,7 +17,7 @@ import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 import { AuthProvider } from './context/AuthContext';
 
-export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'contacts' | 'files' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -109,7 +111,28 @@ const App: React.FC = () => {
               </div>
             }
           >
-            <CompaniesPage />
+            <CompaniesPage onNavigate={handlePageChange} />
+          </ErrorBoundary>
+        );
+      case 'company-detail':
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler beim Laden der Unternehmensdetails</h1>
+                <p>Es gab ein Problem beim Laden der Unternehmensdetails.</p>
+                <button onClick={() => setCurrentPage('companies')} className="back-button">
+                  Zurück zur Unternehmensübersicht
+                </button>
+              </div>
+            }
+          >
+            <CompanyDetail 
+              company={pageState?.company}
+              companyId={pageState?.companyId}
+              onNavigate={handlePageChange} 
+            />
           </ErrorBoundary>
         );
       case 'contacts':
@@ -126,7 +149,28 @@ const App: React.FC = () => {
               </div>
             }
           >
-            <ContactsPage />
+            <ContactsPage onNavigate={handlePageChange} />
+          </ErrorBoundary>
+        );
+      case 'contact-detail':
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler beim Laden der Kontaktdetails</h1>
+                <p>Es gab ein Problem beim Laden der Kontaktdetails.</p>
+                <button onClick={() => setCurrentPage('contacts')} className="back-button">
+                  Zurück zur Kontaktübersicht
+                </button>
+              </div>
+            }
+          >
+            <ContactDetail 
+              contact={pageState?.contact}
+              contactId={pageState?.contactId}
+              onNavigate={handlePageChange} 
+            />
           </ErrorBoundary>
         );
         case 'files':

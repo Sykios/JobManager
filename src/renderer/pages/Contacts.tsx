@@ -34,7 +34,7 @@ interface ContactStatistics {
   byPosition: Record<string, number>;
 }
 
-export const ContactsPage: React.FC = () => {
+export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) => void }> = ({ onNavigate }) => {
   // State management
   const [contacts, setContacts] = useState<ContactModel[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<ContactModel[]>([]);
@@ -353,7 +353,11 @@ export const ContactsPage: React.FC = () => {
   };
 
   const handleSelectContact = (contact: ContactModel) => {
-    setSelectedContact(selectedContact?.id === contact.id ? null : contact);
+    if (onNavigate) {
+      onNavigate('contact-detail', { contact, contactId: contact.id });
+    } else {
+      setSelectedContact(selectedContact?.id === contact.id ? null : contact);
+    }
   };
 
   const handleSearch = (query: string) => {
