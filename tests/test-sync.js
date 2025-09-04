@@ -5,7 +5,7 @@
  * 
  * This script tests your JobManager database synchronization with Supabase
  * Run with: npm run test:sync
- * Or directly: node test-sync.js
+ * Or directly: node tests/test-sync.js
  */
 
 const path = require('path');
@@ -16,7 +16,7 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 // Load environment variables
 require('dotenv').config({
-    path: path.join(__dirname, isDev ? '.env.development' : '.env')
+    path: path.join(__dirname, '..', '.env')
 });
 
 // Simple console test runner
@@ -127,9 +127,9 @@ class SimpleSyncTester {
 
     async testDatabaseFiles() {
         const expectedFiles = [
-            path.join(__dirname, 'src', 'database', 'index.ts'),
-            path.join(__dirname, 'src', 'services', 'SyncService.ts'),
-            path.join(__dirname, 'src', 'services', 'AuthService.ts')
+            path.join(__dirname, '..', 'src', 'database', 'index.ts'),
+            path.join(__dirname, '..', 'src', 'services', 'SyncService.ts'),
+            path.join(__dirname, '..', 'src', 'services', 'AuthService.ts')
         ];
 
         let allPresent = true;

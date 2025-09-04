@@ -153,10 +153,10 @@ npm run build
 ### 🧪 Testing & Development Tools
 ```bash
 # Test-Daten generieren
-node create-test-data.js
+node tests/create-test-data.js
 
 # Sync-Funktionalität testen
-node test-sync.js
+node tests/test-sync.js
 
 # Authentication in Browser testen
 # Öffne: auth-test.html

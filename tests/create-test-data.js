@@ -13,12 +13,12 @@ const { v4: uuidv4 } = require('uuid');
 
 // Load environment variables
 require('dotenv').config({
-    path: path.join(__dirname, process.env.NODE_ENV !== 'production' ? '.env.development' : '.env')
+    path: path.join(__dirname, '..', '.env')
 });
 
 class TestDataCreator {
     constructor() {
-        this.dbPath = path.join(__dirname, 'jobmanager.db');
+        this.dbPath = path.join(__dirname, '..', 'jobmanager.db');
     }
 
     async createDatabase() {
