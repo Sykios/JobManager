@@ -90,6 +90,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
 
+  // Updater operations
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),
+    installUpdate: () => ipcRenderer.invoke('updater:install-update'),
+  },
+
   // Event listeners for auth callbacks
   on: (channel: string, callback: (...args: any[]) => void) => {
     ipcRenderer.on(channel, callback);
@@ -189,6 +196,28 @@ declare global {
       minimize: () => Promise<void>;
       maximize: () => Promise<void>;
       close: () => Promise<void>;
+      
+      // Updater operations
+      updater: {
+        checkForUpdates: () => Promise<{
+          success: boolean;
+          updateInfo?: {
+            version: string;
+            releaseDate: string;
+            releaseName?: string;
+            releaseNotes?: string;
+          };
+          error?: string;
+        }>;
+        downloadUpdate: () => Promise<{
+          success: boolean;
+          error?: string;
+        }>;
+        installUpdate: () => Promise<{
+          success: boolean;
+          error?: string;
+        }>;
+      };
       
       // Event listeners
       on: (channel: string, callback: (...args: any[]) => void) => void;

@@ -10,7 +10,7 @@ import FilesPage from './pages/FilesPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { ShutdownSyncDialog } from './components/common/ShutdownSyncDialog';
 import { AuthGuard } from './components/AuthGuard';
-import { UserSettings } from './components/UserSettings';
+import { Settings } from './pages/Settings';
 import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 import { AuthProvider } from './context/AuthContext';
@@ -194,7 +194,7 @@ const App: React.FC = () => {
               </div>
             }
           >
-            <UserSettings />
+            <Settings />
           </ErrorBoundary>
         );
       default:

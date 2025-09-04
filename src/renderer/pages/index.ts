@@ -5,7 +5,7 @@ export { Dashboard } from './Dashboard';
 export { default as FilesPage } from './FilesPage';
 export { RemindersPage } from './Reminders';
 export { SearchAndFilterPage } from './SearchAndFilter';
-// export { Settings } from './Settings';  // TODO: Not implemented yet
+export { Settings } from './Settings';
 export { StatusManagementDemo } from './StatusManagementDemo';
 
 // Application pages

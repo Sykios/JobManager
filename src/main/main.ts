@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
 import { setupDatabase, initializeDatabase, getDatabase } from '../database';
@@ -198,6 +199,68 @@ const initializeSyncService = async (): Promise<void> => {
   }
 };
 
+/**
+ * Initialize Auto Updater
+ */
+const initializeAutoUpdater = (): void => {
+  try {
+    console.log('Initializing auto updater...');
+    
+    // Configure auto updater (only in production builds)
+    if (!app.isPackaged) {
+      console.log('Running in development mode, auto-updater disabled');
+      return;
+    }
+
+    // Set up update events
+    autoUpdater.on('checking-for-update', () => {
+      console.log('Checking for update...');
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:checking-for-update');
+      }
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      console.log('Update available:', info);
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:update-available', info);
+      }
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('Update not available:', info);
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:update-not-available', info);
+      }
+    });
+
+    autoUpdater.on('error', (err) => {
+      console.error('Update error:', err);
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:error', err.message);
+      }
+    });
+
+    autoUpdater.on('download-progress', (progressObj) => {
+      console.log(`Download speed: ${progressObj.bytesPerSecond} B/s - Downloaded ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`);
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:download-progress', progressObj);
+      }
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('Update downloaded:', info);
+      if (mainWindow) {
+        mainWindow.webContents.send('updater:update-downloaded', info);
+      }
+    });
+
+    console.log('Auto updater initialized successfully');
+  } catch (error) {
+    console.warn('Auto updater initialization failed:', error);
+  }
+};
+
 const createWindow = (): void => {
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -253,7 +316,8 @@ const setupIpcHandlers = (): void => {
     'sync:shutdown', 'sync:retry-connection', 'sync:trigger', 'sync:configure',
     'app:quit-after-sync', 'file:upload', 'file:save', 'file:read', 'file:delete', 
     'file:openPath', 'file:open', 'db:execute', 'db:query', 'app:version',
-    'window:minimize', 'window:maximize', 'window:close'
+    'window:minimize', 'window:maximize', 'window:close',
+    'updater:check-for-updates', 'updater:download-update', 'updater:install-update'
   ];
   
   handlersToRemove.forEach(handler => {
@@ -766,6 +830,49 @@ const setupIpcHandlers = (): void => {
   ipcMain.handle('window:close', () => {
     if (mainWindow) {
       mainWindow.close();
+    }
+  });
+
+  // Auto-updater IPC handlers
+  ipcMain.handle('updater:check-for-updates', async () => {
+    try {
+      if (!app.isPackaged) {
+        return { success: false, error: 'Updates not available in development mode' };
+      }
+      console.log('Checking for updates...');
+      const result = await autoUpdater.checkForUpdates();
+      return { success: true, updateInfo: result?.updateInfo || null };
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('updater:download-update', async () => {
+    try {
+      if (!app.isPackaged) {
+        return { success: false, error: 'Updates not available in development mode' };
+      }
+      console.log('Starting update download...');
+      await autoUpdater.downloadUpdate();
+      return { success: true };
+    } catch (error) {
+      console.error('Error downloading update:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('updater:install-update', () => {
+    try {
+      if (!app.isPackaged) {
+        return { success: false, error: 'Updates not available in development mode' };
+      }
+      console.log('Installing update and restarting...');
+      autoUpdater.quitAndInstall();
+      return { success: true };
+    } catch (error) {
+      console.error('Error installing update:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
 
