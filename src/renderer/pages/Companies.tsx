@@ -31,11 +31,16 @@ interface CompanyStatistics {
   recentCompanies: number;
 }
 
+interface CompanyWithApplications extends Company {
+  applicationCount?: number;
+  latestApplicationDate?: string;
+}
+
 export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) => void }> = ({ onNavigate }) => {
   // State management
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [companies, setCompanies] = useState<CompanyWithApplications[]>([]);
+  const [filteredCompanies, setFilteredCompanies] = useState<CompanyWithApplications[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyWithApplications | null>(null);
   const [statistics, setStatistics] = useState<CompanyStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,12 +48,12 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
   
   // UI state
   const [showForm, setShowForm] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [editingCompany, setEditingCompany] = useState<CompanyWithApplications | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<CompanyFilters>({});
   const [showStatistics, setShowStatistics] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
-  const [duplicates, setDuplicates] = useState<{ reason: string; companies: Company[] }[]>([]);
+  const [duplicates, setDuplicates] = useState<{ reason: string; companies: CompanyWithApplications[] }[]>([]);
 
   // Company service using IPC
   const companyService = {
@@ -188,8 +193,8 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
       };
     },
 
-    async findDuplicates(): Promise<{ reason: string; companies: Company[] }[]> {
-      const duplicates: { reason: string; companies: Company[] }[] = [];
+    async findDuplicates(): Promise<{ reason: string; companies: CompanyWithApplications[] }[]> {
+      const duplicates: { reason: string; companies: CompanyWithApplications[] }[] = [];
 
       // Find companies with same name
       const nameResult = await window.electronAPI.queryDatabase(
@@ -202,8 +207,19 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
           [row.name]
         );
 
+        // Get application counts for these companies
+        const applicationCounts = await this.getApplicationCounts();
+        const companiesWithApplications = companies.map((company: Company) => {
+          const appData = applicationCounts.find(ac => ac.companyId === company.id);
+          return {
+            ...company,
+            applicationCount: appData?.count || 0,
+            latestApplicationDate: appData?.latestDate
+          };
+        });
+
         duplicates.push({
-          companies: companies as Company[],
+          companies: companiesWithApplications,
           reason: `Gleicher Name: ${row.name}`
         });
       }
@@ -231,6 +247,24 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
       ];
       
       return csvRows.join('\n');
+    },
+
+    async getApplicationCounts(): Promise<{ companyId: number; count: number; latestDate?: string }[]> {
+      const result = await window.electronAPI.queryDatabase(`
+        SELECT 
+          company_id,
+          COUNT(*) as count,
+          MAX(application_date) as latest_date
+        FROM applications 
+        WHERE company_id IS NOT NULL 
+        GROUP BY company_id
+      `, []);
+      
+      return result.map((row: any) => ({
+        companyId: row.company_id,
+        count: row.count,
+        latestDate: row.latest_date
+      }));
     }
   };
 
@@ -240,12 +274,23 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
       setLoading(true);
       setError('');
       
-      const [companiesData, statisticsData] = await Promise.all([
+      const [companiesData, statisticsData, applicationCounts] = await Promise.all([
         companyService.getAll(filters),
-        companyService.getStatistics()
+        companyService.getStatistics(),
+        companyService.getApplicationCounts()
       ]);
       
-      setCompanies(companiesData);
+      // Combine companies with their application counts
+      const companiesWithApplications: CompanyWithApplications[] = companiesData.map(company => {
+        const appData = applicationCounts.find(ac => ac.companyId === company.id);
+        return {
+          ...company,
+          applicationCount: appData?.count || 0,
+          latestApplicationDate: appData?.latestDate
+        };
+      });
+      
+      setCompanies(companiesWithApplications);
       setStatistics(statisticsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fehler beim Laden der Unternehmen');
@@ -283,12 +328,12 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
     setShowForm(true);
   };
 
-  const handleEditCompany = (company: Company) => {
+  const handleEditCompany = (company: CompanyWithApplications) => {
     setEditingCompany(company);
     setShowForm(true);
   };
 
-  const handleDeleteCompany = async (company: Company) => {
+  const handleDeleteCompany = async (company: CompanyWithApplications) => {
     if (!window.confirm(`Soll das Unternehmen "${company.name}" wirklich gelöscht werden?`)) {
       return;
     }
@@ -579,6 +624,8 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
               <CompanyCard
                 key={company.id}
                 company={company}
+                applicationCount={company.applicationCount}
+                latestApplicationDate={company.latestApplicationDate}
                 onEdit={handleEditCompany}
                 onView={(company) => {
                   if (onNavigate) {
