@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { Applications, NewApplication, ApplicationDetail } from './pages/applications';
+import { Applications, NewApplication, ApplicationDetail, ApplicationEdit } from './pages/applications';
 import { ContactsPage } from './pages/Contacts';
 import { ContactDetail } from './pages/contacts/ContactDetail';
 import { CompaniesPage } from './pages/Companies';
@@ -17,7 +17,7 @@ import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 import { AuthProvider } from './context/AuthContext';
 
-export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'application-edit' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -91,6 +91,27 @@ const App: React.FC = () => {
             }
           >
             <ApplicationDetail 
+              application={pageState?.application}
+              applicationId={pageState?.applicationId}
+              onNavigate={handlePageChange} 
+            />
+          </ErrorBoundary>
+        );
+      case 'application-edit':
+        return (
+          <ErrorBoundary
+            onError={handleError}
+            fallback={
+              <div className="error-page">
+                <h1>Fehler beim Bearbeiten der Bewerbung</h1>
+                <p>Es gab ein Problem beim Laden des Bearbeitungsformulars.</p>
+                <button onClick={() => setCurrentPage('applications')} className="back-button">
+                  Zurück zur Bewerbungsübersicht
+                </button>
+              </div>
+            }
+          >
+            <ApplicationEdit 
               application={pageState?.application}
               applicationId={pageState?.applicationId}
               onNavigate={handlePageChange} 

@@ -55,9 +55,10 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
   };
 
   const handleEdit = (application: Application) => {
-    // TODO: Implement edit functionality
-    console.log('Edit application:', application);
-  };
+  if (onNavigate) {
+    onNavigate('application-edit', { application });
+  }
+};
 
   const handleDelete = async (application: Application) => {
     if (!confirm(`Möchten Sie die Bewerbung "${application.title}" wirklich löschen?`)) {

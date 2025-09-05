@@ -2,7 +2,7 @@ import React from 'react';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 
-export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
+export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'application-edit' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
