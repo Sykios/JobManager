@@ -209,6 +209,18 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({
     }
   };
 
+  const handleCompanyClick = () => {
+    if (application?.company_id && onNavigate) {
+      onNavigate('company-detail', { companyId: application.company_id });
+    }
+  };
+
+  const handleContactClick = (contact: ContactModel) => {
+    if (onNavigate) {
+      onNavigate('contact-detail', { contactId: contact.id });
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -278,7 +290,21 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({
         </div>
 
         <div className="flex items-center gap-4 text-gray-600">
-          <span className="font-medium">{companyName}</span>
+          <button
+            onClick={handleCompanyClick}
+            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors duration-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:no-underline"
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              padding: 0, 
+              fontSize: 'inherit', 
+              fontFamily: 'inherit', 
+              textAlign: 'left' 
+            }}
+            disabled={!application.company_id}
+          >
+            {companyName || 'Unbekanntes Unternehmen'}
+          </button>
           <span>•</span>
           <span>{application.location}</span>
           {application.salary_range && (
@@ -402,11 +428,17 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({
             <Card title={`Ansprechpartner (${contacts.length})`} className="p-6">
               <div className="space-y-4 mt-4">
                 {contacts.map(contact => (
-                  <ContactCard
+                  <div 
                     key={contact.id}
-                    contact={contact}
-                    compact={true}
-                  />
+                    onClick={() => handleContactClick(contact)}
+                    className="cursor-pointer transition-all duration-200 hover:transform hover:-translate-y-1 hover:shadow-lg rounded-lg"
+                    style={{ borderRadius: '8px' }}
+                  >
+                    <ContactCard
+                      contact={contact}
+                      compact={true}
+                    />
+                  </div>
                 ))}
               </div>
             </Card>
