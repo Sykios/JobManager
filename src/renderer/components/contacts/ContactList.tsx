@@ -200,7 +200,6 @@ export const ContactList: React.FC<ContactListProps> = ({
     <div className={`contact-list ${className}`}>
       {/* Sort controls */}
       <div className="sort-controls">
-        <span className="sort-label">Sortieren nach:</span>
         <div className="sort-buttons">
           <button
             type="button"
@@ -264,16 +263,8 @@ export const ContactList: React.FC<ContactListProps> = ({
           align-items: center;
           gap: 16px;
           margin-bottom: 16px;
-          padding: 16px;
-          background: #f9fafb;
-          border-radius: 8px;
+          padding: 16px 0;
           flex-wrap: wrap;
-        }
-
-        .sort-label {
-          font-weight: 500;
-          color: #374151;
-          font-size: 0.875rem;
         }
 
         .sort-buttons {
