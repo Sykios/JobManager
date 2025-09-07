@@ -292,6 +292,10 @@ const createWindow = (): void => {
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    // Set fullscreen after showing in development mode for better compatibility
+    if (process.env.NODE_ENV === 'development') {
+      mainWindow!.maximize();
+    }
   });
 
   // Handle window closed
