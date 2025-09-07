@@ -116,9 +116,10 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
 
   return (
     <div className="company-form">
-      <div className="form-header">
-        <h3>{company ? 'Unternehmen bearbeiten' : 'Neues Unternehmen erstellen'}</h3>
-      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="form-header">
+          <h3>{company ? 'Unternehmen bearbeiten' : 'Neues Unternehmen erstellen'}</h3>
+        </div>
 
       {errors.general && (
         <div className="error-banner">
@@ -249,14 +250,14 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({
           Abbrechen
         </button>
         <button
-          type="button"
-          onClick={handleSubmit}
+          type="submit"
           className="btn-primary"
           disabled={isLoading}
         >
           {isLoading ? 'Speichert...' : (company ? 'Unternehmen aktualisieren' : 'Unternehmen erstellen')}
         </button>
       </div>
+      </form>
 
       <style>{`
         .company-form {

@@ -187,9 +187,10 @@ export const ContactForm: React.FC<ContactFormProps> = ({
 
   return (
     <div className="contact-form">
-      <div className="form-header">
-        <h3>{contact ? 'Kontakt bearbeiten' : 'Neuen Kontakt erstellen'}</h3>
-      </div>
+      <form onSubmit={handleSubmit}>
+        <div className="form-header">
+          <h3>{contact ? 'Kontakt bearbeiten' : 'Neuen Kontakt erstellen'}</h3>
+        </div>
 
       {errors.general && (
         <div className="error-banner">
@@ -355,14 +356,14 @@ export const ContactForm: React.FC<ContactFormProps> = ({
           Abbrechen
         </button>
         <button
-          type="button"
-          onClick={handleSubmit}
+          type="submit"
           className="btn-primary"
           disabled={isLoading}
         >
           {isLoading ? 'Speichert...' : (contact ? 'Kontakt aktualisieren' : 'Kontakt erstellen')}
         </button>
       </div>
+      </form>
 
       <style>{`
         .contact-form {
