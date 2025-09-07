@@ -33,7 +33,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       console.log('Magic link authentication successful:', user);
       setIsLoading(false);
       setError('');
-      setSuccess('🎉 Successfully signed in! Welcome to JobManager.');
+      setSuccess('🎉 Erfolgreich angemeldet! Willkommen bei JobManager.');
       
       // Save keep logged in preference if user chose it
       if (keepLoggedIn) {
@@ -51,7 +51,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     const handleMagicLinkError = (event: any, errorMessage: string) => {
       console.error('Magic link authentication failed:', errorMessage);
       setIsLoading(false);
-      setError(`Authentication failed: ${errorMessage}`);
+      setError(`Authentifizierung fehlgeschlagen: ${errorMessage}`);
       setSuccess('');
     };
 
@@ -74,7 +74,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     
     if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
+      setError('Bitte geben Sie eine gültige E-Mail-Adresse ein');
       return;
     }
     
@@ -87,17 +87,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       const result = await window.electronAPI.authMagicLink(email);
       
       if (result.error) {
-        setError(result.error.message || 'Authentication failed');
+        setError(result.error.message || 'Authentifizierung fehlgeschlagen');
         setIsLoading(false);
       } else {
         // Save keep logged in preference immediately (we'll apply it when auth succeeds)
         localStorage.setItem('jobmanager_keep_logged_in', keepLoggedIn.toString());
         
-        setSuccess('✨ Check your email for the login link! Click the link to sign in automatically.');
+        setSuccess('✨ Überprüfen Sie Ihre E-Mails für den Login-Link! Klicken Sie auf den Link, um sich automatisch anzumelden.');
         // Keep loading state - will be cleared when we receive the deep link callback
       }
     } catch (error) {
-      setError('Something went wrong. Please try again.');
+      setError('Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.');
       console.error('Auth error:', error);
       setIsLoading(false);
     }
@@ -108,17 +108,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Welcome to JobManager
+            Willkommen bei JobManager
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Enter your email to sign in or create an account
+            Geben Sie Ihre E-Mail-Adresse ein, um sich anzumelden oder ein Konto zu erstellen
           </p>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email Address
+              E-Mail-Adresse
             </label>
             <input
               id="email"
@@ -132,7 +132,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                 setError(''); // Clear error when typing
               }}
               className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              placeholder="your@email.com"
+              placeholder="ihre@email.de"
               disabled={isLoading}
             />
           </div>
@@ -148,7 +148,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               disabled={isLoading}
             />
             <label htmlFor="keepLoggedIn" className="ml-2 block text-sm text-gray-700">
-              Keep me logged in
+              Angemeldet bleiben
             </label>
           </div>
 
@@ -179,10 +179,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Sending Login Link...
+                Login-Link wird gesendet...
               </>
             ) : (
-              '📧 Send Login Link'
+              '📧 Login-Link senden'
             )}
           </button>
 
@@ -192,7 +192,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">or</span>
+              <span className="px-2 bg-gray-50 text-gray-500">oder</span>
             </div>
           </div>
 
@@ -206,14 +206,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <span className="mr-2">🔌</span>
-            Skip Login (Offline Mode)
+            Anmeldung überspringen (Offline-Modus)
           </button>
 
           <div className="text-center">
             <p className="text-xs text-gray-500">
-              Offline mode lets you use JobManager without signing in. 
+              Der Offline-Modus ermöglicht es Ihnen, JobManager ohne Anmeldung zu verwenden. 
               <br />
-              <strong>Note:</strong> Sync and email reminders will be disabled.
+              <strong>Hinweis:</strong> Synchronisation und E-Mail-Erinnerungen werden deaktiviert.
             </p>
           </div>
 
@@ -221,7 +221,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
             {/* Development Mode Shortcuts */}
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="text-xs text-gray-600 mb-3">🛠️ Development Mode: (ENV: {process.env.NODE_ENV || 'undefined'})</div>
+                <div className="text-xs text-gray-600 mb-3">🛠️ Entwicklungsmodus: (ENV: {process.env.NODE_ENV || 'undefined'})</div>
                 <div className="space-y-2">
                   <button
                     type="button"
@@ -245,11 +245,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                       
                       // Use direct bypass method
                       setDevBypass(mockUser, mockSession);
-                      setSuccess('🛠️ Development mode: Authentication bypassed!');
+                      setSuccess('🛠️ Entwicklungsmodus: Authentifizierung umgangen!');
                     }}
                     className="w-full text-xs bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-3 rounded transition-colors"
                   >
-                    🛠️ Skip Login (Development Only)
+                    🛠️ Anmeldung überspringen (Nur Entwicklung)
                   </button>
                   
                   <button
@@ -266,11 +266,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
                     }}
                     className="w-full text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-3 rounded transition-colors"
                   >
-                    🧪 Test Deep Link Handler
+                    🧪 Deep Link Handler testen
                   </button>
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
-                  These options only appear in development mode
+                  Diese Optionen erscheinen nur im Entwicklungsmodus
                 </div>
               </div>
             )}

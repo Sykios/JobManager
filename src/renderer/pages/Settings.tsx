@@ -176,7 +176,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
         {!isOfflineMode ? (
           <div className="bg-white shadow rounded-lg mb-6">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Profil</h2>
             </div>
             <div className="px-6 py-4">
               <div className="flex items-center space-x-4">
@@ -187,12 +187,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                 </div>
                 <div>
                   <p className="text-lg font-medium text-gray-900">
-                    {user?.email || 'Loading...'}
+                    {user?.email || 'Lädt...'}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Member since {user?.created_at 
+                    Mitglied seit {user?.created_at 
                       ? new Date(user.created_at).toLocaleDateString() 
-                      : 'Unknown'
+                      : 'Unbekannt'
                     }
                   </p>
                 </div>
@@ -205,24 +205,24 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
             <div className="px-6 py-4 border-b border-orange-200">
               <h2 className="text-lg font-semibold text-orange-900 flex items-center">
                 <span className="mr-2">🔌</span>
-                Offline Modus
+                Offline-Modus
               </h2>
             </div>
             <div className="px-6 py-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium text-orange-900">
-                    You are using JobManager in offline mode
+                    Sie verwenden JobManager im Offline-Modus
                   </p>
                   <p className="text-sm text-orange-700 mt-1">
-                    Your data is stored locally. Sync and email reminders are disabled.
+                    Ihre Daten werden lokal gespeichert. Synchronisation und E-Mail-Erinnerungen sind deaktiviert.
                   </p>
                   <div className="mt-4 bg-orange-100 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-orange-900">Disabled Features:</h4>
+                    <h4 className="text-sm font-medium text-orange-900">Deaktivierte Funktionen:</h4>
                     <ul className="text-sm text-orange-700 mt-1 list-disc list-inside">
-                      <li>Cloud synchronization across devices</li>
-                      <li>Email reminder notifications</li>
-                      <li>Data backup to cloud</li>
+                      <li>Cloud-Synchronisation zwischen Geräten</li>
+                      <li>E-Mail-Benachrichtigungen für Erinnerungen</li>
+                      <li>Datensicherung in der Cloud</li>
                     </ul>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                   }}
                   className="ml-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                 >
-                  Sign In
+                  Anmelden
                 </button>
               </div>
             </div>
@@ -249,8 +249,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
             <div className="px-6 py-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="text-sm font-medium text-gray-900">Keep me logged in</label>
-                  <p className="text-sm text-gray-500">Stay signed in across app restarts</p>
+                  <label className="text-sm font-medium text-gray-900">Angemeldet bleiben</label>
+                  <p className="text-sm text-gray-500">Bei App-Neustarts angemeldet bleiben</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -265,8 +265,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
               </div>
               <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                 <div>
-                  <label className="text-sm font-medium text-gray-900">Switch to offline mode</label>
-                  <p className="text-sm text-gray-500">Use JobManager without sync and email reminders</p>
+                  <label className="text-sm font-medium text-gray-900">Zu Offline-Modus wechseln</label>
+                  <p className="text-sm text-gray-500">JobManager ohne Sync und E-Mail-Erinnerungen verwenden</p>
                 </div>
                 <button
                   onClick={() => {
@@ -275,7 +275,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                   className="px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                 >
                   <span className="mr-1">🔌</span>
-                  Go Offline
+                  Offline gehen
                 </button>
               </div>
             </div>
@@ -286,16 +286,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
         <div className={`shadow rounded-lg mb-6 ${isOfflineMode ? 'bg-gray-50 border border-gray-200' : 'bg-white'}`}>
           <div className={`px-6 py-4 border-b ${isOfflineMode ? 'border-gray-200 bg-gray-100' : 'border-gray-200'}`}>
             <h2 className={`text-lg font-semibold ${isOfflineMode ? 'text-gray-500' : 'text-gray-900'}`}>
-              Sync {isOfflineMode && '(Disabled in Offline Mode)'}
+              Synchronisation {isOfflineMode && '(Im Offline-Modus deaktiviert)'}
             </h2>
           </div>
           <div className="px-6 py-4 space-y-4">
             {isOfflineMode ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-4">🔌</div>
-                <p className="text-gray-500 font-medium">Sync is disabled in offline mode</p>
+                <p className="text-gray-500 font-medium">Synchronisation ist im Offline-Modus deaktiviert</p>
                 <p className="text-sm text-gray-400 mt-2">
-                  Sign in to enable cloud synchronization across devices
+                  Melden Sie sich an, um Cloud-Synchronisation zwischen Geräten zu aktivieren
                 </p>
               </div>
             ) : syncStatus ? (
@@ -310,16 +310,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-500">Last Sync</p>
+                    <p className="text-sm font-medium text-gray-500">Letzter Sync</p>
                     <p className="text-lg font-semibold text-gray-900">
                       {syncStatus.lastSync 
-                        ? new Date(syncStatus.lastSync).toLocaleString()
-                        : 'Never'
+                        ? new Date(syncStatus.lastSync).toLocaleString('de-DE')
+                        : 'Nie'
                       }
                     </p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-500">Pending Changes</p>
+                    <p className="text-sm font-medium text-gray-500">Ausstehende Änderungen</p>
                     <p className="text-lg font-semibold text-gray-900">
                       {syncStatus.pendingItems || 0}
                     </p>
@@ -336,12 +336,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                         : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                     }`}
                   >
-                    {isLoading ? 'Syncing...' : 'Sync Now'}
+                    {isLoading ? 'Synchronisiert...' : 'Jetzt synchronisieren'}
                   </button>
                 )}
               </>
             ) : (
-              <p className="text-gray-500">Loading sync status...</p>
+              <p className="text-gray-500">Lade Sync-Status...</p>
             )}
           </div>
         </div>
@@ -351,16 +351,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
           <div className="px-6 py-4 border-b border-blue-200 bg-blue-50">
             <h2 className="text-lg font-semibold text-blue-900 flex items-center">
               <span className="mr-2">🔄</span>
-              App Updates
+              App-Updates
             </h2>
           </div>
           <div className="px-6 py-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900">Software Updates</h3>
+                <h3 className="text-sm font-medium text-gray-900">Software-Updates</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Keep your JobManager app up to date with the latest features and security fixes.
-                  Your database will be preserved during updates.
+                  Halten Sie Ihre JobManager-App mit den neuesten Funktionen und Sicherheits-Updates auf dem aktuellen Stand.
+                  Ihre Datenbank bleibt bei Updates erhalten.
                 </p>
                 {updateMessage && (
                   <div className={`mt-3 p-3 rounded text-sm font-medium ${
@@ -380,7 +380,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                     onClick={handleInstallUpdate}
                     className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors min-w-[160px] shadow-md"
                   >
-                    Install & Restart
+                    Installieren & Neustarten
                   </button>
                 ) : (
                   <button
@@ -388,9 +388,9 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                     disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors min-w-[160px] shadow-md"
                   >
-                    {updateStatus === 'checking' ? 'Checking...' : 
-                     updateStatus === 'downloading' ? 'Downloading...' : 
-                     'Check for Updates'}
+                    {updateStatus === 'checking' ? 'Überprüfe...' : 
+                     updateStatus === 'downloading' ? 'Lade herunter...' : 
+                     'Nach Updates suchen'}
                   </button>
                 )}
               </div>
@@ -402,7 +402,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-red-600">
-              {isOfflineMode ? 'Offline Mode Actions' : 'Account Actions'}
+              {isOfflineMode ? 'Offline-Modus Aktionen' : 'Account-Aktionen'}
             </h2>
           </div>
           <div className="px-6 py-4">
@@ -410,8 +410,8 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
               /* Offline mode actions */
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Exit offline mode</p>
-                  <p className="text-sm text-gray-500">Return to login screen to sign in</p>
+                  <p className="text-sm font-medium text-gray-900">Offline-Modus verlassen</p>
+                  <p className="text-sm text-gray-500">Zum Anmeldebildschirm zurückkehren</p>
                 </div>
                 <button
                   onClick={() => {
@@ -425,15 +425,15 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                       : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                   }`}
                 >
-                  {isLoading ? 'Exiting...' : 'Sign In'}
+                  {isLoading ? 'Beende...' : 'Anmelden'}
                 </button>
               </div>
             ) : (
               /* Authenticated user actions */
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Sign out</p>
-                  <p className="text-sm text-gray-500">Sign out of your account</p>
+                  <p className="text-sm font-medium text-gray-900">Abmelden</p>
+                  <p className="text-sm text-gray-500">Von Ihrem Account abmelden</p>
                 </div>
                 <button
                   onClick={handleSignOut}
@@ -444,7 +444,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                       : 'bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
                   }`}
                 >
-                  {isLoading ? 'Signing out...' : 'Sign Out'}
+                  {isLoading ? 'Melde ab...' : 'Abmelden'}
                 </button>
               </div>
             )}

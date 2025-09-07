@@ -23,7 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             {isOfflineMode && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                 <span className="mr-1">🔌</span>
-                Offline Mode
+                Offline Modus
               </span>
             )}
           </div>
@@ -80,11 +80,11 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-gray-700">
-                {isOfflineMode ? 'Offline Mode' : (user?.email ? user.email.split('@')[0] : 'User')}
+                {isOfflineMode ? 'Offline Modus' : (user?.email ? user.email.split('@')[0] : 'User')}
               </span>
               <span className="text-xs text-gray-500">
                 {isOfflineMode 
-                  ? 'Local data only' 
+                  ? 'nur lokale Daten' 
                   : (user?.email?.includes('dev@') ? 'Development' : 'Benutzer')
                 }
               </span>
