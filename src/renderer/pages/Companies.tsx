@@ -478,11 +478,11 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
                   </div>
                 ))}
             </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};  // Render duplicates panel
+    );
+  };  // Render duplicates panel
   const renderDuplicatesPanel = () => {
     if (!showDuplicates) return null;
 
@@ -734,6 +734,8 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
         }
 
         .search-section {
+          margin-top: 8px;
+          padding-top: 8px;
           margin-bottom: 16px;
         }
 

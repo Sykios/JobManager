@@ -379,31 +379,76 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
     }
   };
 
-  // Statistics summary
-  const renderStatisticsSummary = () => {
-    if (!statistics || !showStatistics) return null;
+  // Render statistics panel
+  const renderStatisticsPanel = () => {
+    if (!showStatistics || !statistics) return null;
 
     return (
-      <div className="statistics-summary">
-        <div className="stat-item">
-          <span className="stat-value">{statistics.total}</span>
-          <span className="stat-label">Gesamt</span>
+      <div className="statistics-panel">
+        <div className="statistics-header">
+          <h3>Kontakt Statistiken</h3>
+          <button
+            type="button"
+            onClick={() => setShowStatistics(false)}
+            className="close-btn"
+          >
+            ✕
+          </button>
         </div>
-        <div className="stat-item">
-          <span className="stat-value">{statistics.withEmail}</span>
-          <span className="stat-label">Mit E-Mail</span>
+        
+        <div className="statistics-summary">
+          <div className="stat-item">
+            <span className="stat-value">{statistics.total}</span>
+            <span className="stat-label">Gesamt</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{statistics.withEmail}</span>
+            <span className="stat-label">Mit E-Mail</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-value">{statistics.recentContacts}</span>
+            <span className="stat-label">Neue (30 Tage)</span>
+          </div>
         </div>
-        <div className="stat-item">
-          <span className="stat-value">{statistics.withPhone}</span>
-          <span className="stat-label">Mit Telefon</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{statistics.withLinkedIn}</span>
-          <span className="stat-label">Mit LinkedIn</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-value">{statistics.recentContacts}</span>
-          <span className="stat-label">Neue (30 Tage)</span>
+
+        <div className="statistics-grid">
+          <div className="stat-section">
+            <h4>Top Positionen</h4>
+            <div className="stat-list">
+              {Object.entries(statistics.byPosition)
+                .slice(0, 5)
+                .map(([position, count]) => (
+                  <div key={position} className="stat-row">
+                    <span className="stat-name">{position}</span>
+                    <span className="stat-count">{count}</span>
+                  </div>
+                ))}
+              {Object.keys(statistics.byPosition).length === 0 && (
+                <div className="stat-row">
+                  <span className="stat-name">Keine Positionsdaten verfügbar</span>
+                  <span className="stat-count">0</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="stat-section">
+            <h4>Kontakt Vollständigkeit</h4>
+            <div className="stat-list">
+              <div className="stat-row">
+                <span className="stat-name">Telefon Abdeckung</span>
+                <span className="stat-count">{statistics.total > 0 ? Math.round((statistics.withPhone / statistics.total) * 100) : 0}%</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-name">LinkedIn Abdeckung</span>
+                <span className="stat-count">{statistics.total > 0 ? Math.round((statistics.withLinkedIn / statistics.total) * 100) : 0}%</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-name">Unternehmen verknüpft</span>
+                <span className="stat-count">{statistics.total > 0 ? Math.round((statistics.withCompany / statistics.total) * 100) : 0}%</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -509,8 +554,6 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
             📤 CSV Export
           </button>
         </div>
-        
-        {renderStatisticsSummary()}
       </div>
 
       {/* Error message */}
@@ -554,47 +597,8 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
         </div>
       </div>
 
-      {/* Statistics panel */}
-      {showStatistics && statistics && (
-        <div className="statistics-panel">
-          <h3>Kontakt-Statistiken</h3>
-          <div className="statistics-grid">
-            <div className="stat-card">
-              <h4>Kontaktmethoden</h4>
-              <div className="stat-list">
-                <div className="stat-row">
-                  <span>Mit E-Mail-Adresse:</span>
-                  <span>{statistics.withEmail} ({Math.round((statistics.withEmail / statistics.total) * 100)}%)</span>
-                </div>
-                <div className="stat-row">
-                  <span>Mit Telefonnummer:</span>
-                  <span>{statistics.withPhone} ({Math.round((statistics.withPhone / statistics.total) * 100)}%)</span>
-                </div>
-                <div className="stat-row">
-                  <span>Mit LinkedIn Profil:</span>
-                  <span>{statistics.withLinkedIn} ({Math.round((statistics.withLinkedIn / statistics.total) * 100)}%)</span>
-                </div>
-                <div className="stat-row">
-                  <span>Mit Unternehmen:</span>
-                  <span>{statistics.withCompany} ({Math.round((statistics.withCompany / statistics.total) * 100)}%)</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="stat-card">
-              <h4>Häufigste Positionen</h4>
-              <div className="stat-list">
-                {Object.entries(statistics.byPosition).slice(0, 5).map(([position, count]) => (
-                  <div key={position} className="stat-row">
-                    <span>{position}:</span>
-                    <span>{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Statistics Panel */}
+      {renderStatisticsPanel()}
 
       {/* Duplicates panel */}
       {renderDuplicatesPanel()}
@@ -704,35 +708,6 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
           border-color: #9ca3af;
         }
 
-        .statistics-summary {
-          display: flex;
-          gap: 24px;
-          background: #f8fafc;
-          padding: 16px;
-          border-radius: 8px;
-          flex-wrap: wrap;
-        }
-
-        .stat-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-        }
-
-        .stat-value {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1f2937;
-        }
-
-        .stat-label {
-          font-size: 0.75rem;
-          color: #6b7280;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
         .error-banner {
           background: #fef2f2;
           border: 1px solid #fecaca;
@@ -811,33 +786,80 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
         .statistics-panel {
           background: white;
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 24px;
+          border-radius: 12px;
+          margin-top: 14px;
+          margin-bottom: 8px;
+          overflow: hidden;
         }
 
-        .statistics-panel h3 {
-          margin: 0 0 16px 0;
+        .statistics-header {
+          padding: 16px 20px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .statistics-header h3 {
+          margin: 0;
+          font-size: 1.125rem;
+          font-weight: 600;
           color: #1f2937;
+        }
+
+        .close-btn {
+          background: none;
+          border: none;
+          color: #6b7280;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 4px;
           font-size: 1.25rem;
+          transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+          background: #e5e7eb;
+          color: #374151;
+        }
+
+        .statistics-summary {
+          padding: 20px;
+          display: flex;
+          gap: 40px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .stat-item {
+          text-align: center;
+        }
+
+        .stat-value {
+          display: block;
+          font-size: 2rem;
+          font-weight: 700;
+          color: #3b82f6;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 0.875rem;
+          color: #6b7280;
         }
 
         .statistics-grid {
+          padding: 20px;
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 24px;
         }
 
-        .stat-card {
-          background: #f9fafb;
-          border-radius: 8px;
-          padding: 16px;
-        }
-
-        .stat-card h4 {
+        .stat-section h4 {
           margin: 0 0 12px 0;
-          color: #374151;
           font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
         }
 
         .stat-list {
@@ -849,7 +871,28 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
         .stat-row {
           display: flex;
           justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .stat-row:last-child {
+          border-bottom: none;
+        }
+
+        .stat-name {
           font-size: 0.875rem;
+          color: #374151;
+          flex: 1;
+        }
+
+        .stat-count {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #1f2937;
+          background: #f3f4f6;
+          padding: 2px 8px;
+          border-radius: 12px;
         }
 
         .duplicates-panel {
@@ -872,13 +915,13 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
           color: #a16207;
         }
 
-        .close-btn {
-          background: none;
-          border: none;
+        .duplicates-panel .close-btn {
           color: #a16207;
-          cursor: pointer;
-          font-size: 1.25rem;
-          padding: 0;
+        }
+
+        .duplicates-panel .close-btn:hover {
+          background: #fde047;
+          color: #a16207;
         }
 
         .no-duplicates {

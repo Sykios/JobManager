@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ContactModel } from '../../../models/Contact';
 import { ContactCard } from './ContactCard';
 
@@ -31,6 +31,41 @@ export const ContactList: React.FC<ContactListProps> = ({
 }) => {
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated' | 'position'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [applicationCounts, setApplicationCounts] = useState<Record<number, number>>({});
+
+  // Fetch application counts for contacts
+  useEffect(() => {
+    const fetchApplicationCounts = async () => {
+      if (contacts.length === 0) return;
+      
+      try {
+        const counts: Record<number, number> = {};
+        
+        for (const contact of contacts) {
+          if (contact.id) {
+            const result = await window.electronAPI.queryDatabase(
+              'SELECT COUNT(*) as count FROM applications WHERE contact_id = ?',
+              [contact.id]
+            );
+            const count = result[0]?.count || 0;
+            counts[contact.id] = count;
+          }
+        }
+ 
+        setApplicationCounts(counts);
+      } catch (err) {
+        console.error('Error fetching application counts:', err);
+        // Set all counts to 0 as fallback
+        const fallbackCounts: Record<number, number> = {};
+        contacts.forEach(contact => {
+          if (contact.id) fallbackCounts[contact.id] = 0;
+        });
+        setApplicationCounts(fallbackCounts);
+      }
+    };
+
+    fetchApplicationCounts();
+  }, [contacts]);
 
   // Sort contacts
   const sortedContacts = [...contacts].sort((a, b) => {
@@ -243,6 +278,7 @@ export const ContactList: React.FC<ContactListProps> = ({
           <ContactCard
             key={contact.id}
             contact={contact}
+            applicationCount={contact.id ? applicationCounts[contact.id] || 0 : 0}
             onEdit={onEdit ? () => onEdit(contact) : undefined}
             onDelete={onDelete ? () => onDelete(contact) : undefined}
             onSelect={onSelect ? () => onSelect(contact) : undefined}
