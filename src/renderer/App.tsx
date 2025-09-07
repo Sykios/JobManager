@@ -17,12 +17,10 @@ import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
-
-export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'application-edit' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
+import { NavigationProvider, useNavigation, PageType } from './context/NavigationContext';
 
 const AppContent: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
-  const [pageState, setPageState] = useState<any>(null);
+  const { currentPage, pageState, navigate } = useNavigation();
   const [showShutdownDialog, setShowShutdownDialog] = useState(false);
   const { isOfflineMode } = useAuth();
 
@@ -36,8 +34,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handlePageChange = (page: string | PageType, state?: any) => {
-    setCurrentPage(page as PageType);
-    setPageState(state);
+    navigate(page as PageType, state);
   };
 
   const handleError = (error: Error, errorInfo: any) => {
@@ -69,7 +66,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler auf der Bewerbungsseite</h1>
                 <p>Es gab ein Problem beim Laden der Bewerbungsseite.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -86,7 +83,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler beim Laden der Bewerbungsdetails</h1>
                 <p>Es gab ein Problem beim Laden der Bewerbungsdetails.</p>
-                <button onClick={() => setCurrentPage('applications')} className="back-button">
+                <button onClick={() => navigate('applications')} className="back-button">
                   Zurück zur Bewerbungsübersicht
                 </button>
               </div>
@@ -107,7 +104,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler beim Bearbeiten der Bewerbung</h1>
                 <p>Es gab ein Problem beim Laden des Bearbeitungsformulars.</p>
-                <button onClick={() => setCurrentPage('applications')} className="back-button">
+                <button onClick={() => navigate('applications')} className="back-button">
                   Zurück zur Bewerbungsübersicht
                 </button>
               </div>
@@ -128,7 +125,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler auf der Unternehmensseite</h1>
                 <p>Es gab ein Problem beim Laden der Unternehmensseite.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -145,7 +142,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler beim Laden der Unternehmensdetails</h1>
                 <p>Es gab ein Problem beim Laden der Unternehmensdetails.</p>
-                <button onClick={() => setCurrentPage('companies')} className="back-button">
+                <button onClick={() => navigate('companies')} className="back-button">
                   Zurück zur Unternehmensübersicht
                 </button>
               </div>
@@ -166,7 +163,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler auf der Kontaktseite</h1>
                 <p>Es gab ein Problem beim Laden der Kontaktseite.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -183,7 +180,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler beim Laden der Kontaktdetails</h1>
                 <p>Es gab ein Problem beim Laden der Kontaktdetails.</p>
-                <button onClick={() => setCurrentPage('contacts')} className="back-button">
+                <button onClick={() => navigate('contacts')} className="back-button">
                   Zurück zur Kontaktübersicht
                 </button>
               </div>
@@ -204,7 +201,7 @@ const AppContent: React.FC = () => {
                 <div className="error-page">
                   <h1>Fehler auf der Dateiseite</h1>
                   <p>Es gab ein Problem beim Laden der Dateiseite.</p>
-                  <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                  <button onClick={() => navigate('dashboard')} className="back-button">
                     Zurück zum Dashboard
                   </button>
                 </div>
@@ -221,7 +218,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler auf der Kalenderseite</h1>
                 <p>Es gab ein Problem beim Laden des Kalenders.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -238,7 +235,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler bei den Erinnerungen</h1>
                 <p>Es gab ein Problem beim Laden der Erinnerungen.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -255,7 +252,7 @@ const AppContent: React.FC = () => {
               <div className="error-page">
                 <h1>Fehler auf der Einstellungsseite</h1>
                 <p>Es gab ein Problem beim Laden der Einstellungen.</p>
-                <button onClick={() => setCurrentPage('dashboard')} className="back-button">
+                <button onClick={() => navigate('dashboard')} className="back-button">
                   Zurück zum Dashboard
                 </button>
               </div>
@@ -353,7 +350,9 @@ const App: React.FC = () => {
       <AuthGuard>
         <DatabaseProvider>
           <FileServiceProvider>
-            <AppContent />
+            <NavigationProvider>
+              <AppContent />
+            </NavigationProvider>
           </FileServiceProvider>
         </DatabaseProvider>
       </AuthGuard>

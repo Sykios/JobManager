@@ -10,6 +10,7 @@ import { ContactCard } from '../../components/contacts/ContactCard';
 import { StatusHistoryModel } from '../../../models/StatusHistory';
 import { FileModel } from '../../../models/File';
 import { ContactModel } from '../../../models/Contact';
+import { useNavigation } from '../../context/NavigationContext';
 
 interface ApplicationDetailProps {
   application?: Application;
@@ -22,6 +23,7 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({
   applicationId, 
   onNavigate 
 }) => {
+  const { goBack, canGoBack } = useNavigation();
   const [application, setApplication] = useState<Application | null>(propApplication || null);
   const [statusHistory, setStatusHistory] = useState<StatusHistoryModel[]>([]);
   const [files, setFiles] = useState<FileModel[]>([]);
@@ -204,7 +206,10 @@ export const ApplicationDetail: React.FC<ApplicationDetailProps> = ({
   };
 
   const handleBack = () => {
-    if (onNavigate) {
+    if (canGoBack) {
+      goBack();
+    } else if (onNavigate) {
+      // Fallback to applications page if no history
       onNavigate('applications');
     }
   };

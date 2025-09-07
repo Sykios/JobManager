@@ -5,6 +5,7 @@ import { ApplicationModel } from '../../../models/Application';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/applications/StatusIndicators';
+import { useNavigation } from '../../context/NavigationContext';
 
 interface ContactDetailProps {
   contact?: Contact;
@@ -17,6 +18,7 @@ export const ContactDetail: React.FC<ContactDetailProps> = ({
   contactId,
   onNavigate
 }) => {
+  const { goBack, canGoBack } = useNavigation();
   const [contact, setContact] = useState<ContactModel | null>(
     propContact ? ContactModel.fromJSON(propContact) : null
   );
@@ -122,7 +124,10 @@ export const ContactDetail: React.FC<ContactDetailProps> = ({
   };
 
   const handleBack = () => {
-    if (onNavigate) {
+    if (canGoBack) {
+      goBack();
+    } else if (onNavigate) {
+      // Fallback to contacts page if no history
       onNavigate('contacts');
     }
   };

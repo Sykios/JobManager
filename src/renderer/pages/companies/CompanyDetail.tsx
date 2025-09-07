@@ -5,6 +5,7 @@ import { ApplicationModel } from '../../../models/Application';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardBody } from '../../components/ui/Card';
 import { StatusBadge } from '../../components/applications/StatusIndicators';
+import { useNavigation } from '../../context/NavigationContext';
 
 interface CompanyDetailProps {
   company?: Company;
@@ -17,6 +18,7 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   companyId,
   onNavigate
 }) => {
+  const { goBack, canGoBack } = useNavigation();
   const [company, setCompany] = useState<Company | null>(propCompany || null);
   const [contacts, setContacts] = useState<ContactModel[]>([]);
   const [applications, setApplications] = useState<ApplicationModel[]>([]);
@@ -107,7 +109,10 @@ export const CompanyDetail: React.FC<CompanyDetailProps> = ({
   };
 
   const handleBack = () => {
-    if (onNavigate) {
+    if (canGoBack) {
+      goBack();
+    } else if (onNavigate) {
+      // Fallback to companies page if no history
       onNavigate('companies');
     }
   };

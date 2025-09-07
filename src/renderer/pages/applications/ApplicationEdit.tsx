@@ -3,6 +3,7 @@ import { Application } from '../../../types';
 import { ApplicationForm } from '../../components/applications/ApplicationForm';
 import { Button } from '../../components/ui/Button';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
+import { useNavigation } from '../../context/NavigationContext';
 
 interface ApplicationEditProps {
   application?: Application;
@@ -15,6 +16,7 @@ export const ApplicationEdit: React.FC<ApplicationEditProps> = ({
   applicationId, 
   onNavigate 
 }) => {
+  const { goBack, canGoBack } = useNavigation();
   const [application, setApplication] = useState<Application | null>(propApplication || null);
   const [loading, setLoading] = useState(!propApplication && !!applicationId);
   const [saving, setSaving] = useState(false);
@@ -141,7 +143,10 @@ export const ApplicationEdit: React.FC<ApplicationEditProps> = ({
   };
 
   const handleBack = () => {
-    if (onNavigate) {
+    if (canGoBack) {
+      goBack();
+    } else if (onNavigate) {
+      // Fallback to applications page if no history
       onNavigate('applications');
     }
   };
