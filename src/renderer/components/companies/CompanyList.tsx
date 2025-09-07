@@ -12,6 +12,7 @@ interface CompanyListProps {
   companies: CompanyWithApplications[];
   onCompanyView?: (company: Company) => void;
   onCompanyEdit?: (company: Company) => void;
+  onCompanyDelete?: (company: Company) => void;
   onViewApplications?: (company: Company) => void;
   loading?: boolean;
   error?: string;
@@ -25,6 +26,7 @@ export const CompanyList: React.FC<CompanyListProps> = ({
   companies,
   onCompanyView,
   onCompanyEdit,
+  onCompanyDelete,
   onViewApplications,
   loading = false,
   error,
@@ -320,6 +322,7 @@ export const CompanyList: React.FC<CompanyListProps> = ({
               applications={company.applications}
               onView={onCompanyView}
               onEdit={onCompanyEdit}
+              onDelete={onCompanyDelete}
               onViewApplications={onViewApplications}
               compact={compact}
               showApplications={false}

@@ -627,6 +627,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
                 applicationCount={company.applicationCount}
                 latestApplicationDate={company.latestApplicationDate}
                 onEdit={handleEditCompany}
+                onDelete={handleDeleteCompany}
                 onView={(company) => {
                   if (onNavigate) {
                     onNavigate('company-detail', { company, companyId: company.id });
