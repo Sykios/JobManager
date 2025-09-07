@@ -783,16 +783,17 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
           color: #374151;
         }
 
-        .statistics-panel {
+        .statistics-panel,
+        .duplicates-panel {
           background: white;
           border: 1px solid #e5e7eb;
           border-radius: 12px;
-          margin-top: 14px;
-          margin-bottom: 8px;
+          margin-bottom: 24px;
           overflow: hidden;
         }
 
-        .statistics-header {
+        .statistics-header,
+        .duplicates-header {
           padding: 16px 20px;
           background: #f8fafc;
           border-bottom: 1px solid #e5e7eb;
@@ -801,7 +802,8 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
           align-items: center;
         }
 
-        .statistics-header h3 {
+        .statistics-header h3,
+        .duplicates-header h3 {
           margin: 0;
           font-size: 1.125rem;
           font-weight: 600;
