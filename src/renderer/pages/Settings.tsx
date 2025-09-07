@@ -3,10 +3,11 @@ import { useAuth } from '../context/AuthContext';
 
 interface SettingsProps {
   onClose?: () => void;
+  onNavigate?: (page: string) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
-  const { user, signOut } = useAuth();
+export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
+  const { user, signOut, isOfflineMode, exitOfflineMode, enableOfflineMode } = useAuth();
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<any>(null);
@@ -23,18 +24,33 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         setKeepLoggedIn(keepLoggedInPref);
 
         // Also set it in the main process for tracking
-        await window.electronAPI.authSetKeepLoggedIn(keepLoggedInPref);
+        if (!isOfflineMode) {
+          await window.electronAPI.authSetKeepLoggedIn(keepLoggedInPref);
+        }
 
         // Load sync status
-        const status = await window.electronAPI.getSyncStatus();
-        setSyncStatus(status);
+        if (!isOfflineMode) {
+          const status = await window.electronAPI.getSyncStatus();
+          setSyncStatus(status);
+        } else {
+          // Set a mock status for offline mode
+          setSyncStatus({
+            isConfigured: false,
+            lastSync: null,
+            pendingItems: 0,
+            isOnline: false,
+            syncEnabled: false,
+            syncAvailable: false,
+            syncInProgress: false,
+          });
+        }
       } catch (error) {
         console.error('Error loading user settings:', error);
       }
     };
 
     loadSettings();
-  }, []);
+  }, [isOfflineMode]);
 
   const handleKeepLoggedInChange = async (checked: boolean) => {
     try {
@@ -69,7 +85,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     try {
       setIsLoading(true);
       await signOut();
-      onClose?.();
+      onClose?.() || onNavigate?.('dashboard');
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
@@ -144,7 +160,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         {/* Header */}
         <div className="bg-white shadow rounded-lg mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
             {onClose && (
               <button
                 onClick={onClose}
@@ -157,64 +173,132 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </div>
 
         {/* User Profile Section */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
-          </div>
-          <div className="px-6 py-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xl font-bold">
-                  {user?.email?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
-              <div>
-                <p className="text-lg font-medium text-gray-900">
-                  {user?.email || 'Loading...'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Member since {user?.created_at 
-                    ? new Date(user.created_at).toLocaleDateString() 
-                    : 'Unknown'
-                  }
-                </p>
+        {!isOfflineMode ? (
+          <div className="bg-white shadow rounded-lg mb-6">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Profile</h2>
+            </div>
+            <div className="px-6 py-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xl font-bold">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-lg font-medium text-gray-900">
+                    {user?.email || 'Loading...'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Member since {user?.created_at 
+                      ? new Date(user.created_at).toLocaleDateString() 
+                      : 'Unknown'
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Offline Mode Status Section */
+          <div className="bg-orange-50 border border-orange-200 shadow rounded-lg mb-6">
+            <div className="px-6 py-4 border-b border-orange-200">
+              <h2 className="text-lg font-semibold text-orange-900 flex items-center">
+                <span className="mr-2">🔌</span>
+                Offline Modus
+              </h2>
+            </div>
+            <div className="px-6 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-900">
+                    You are using JobManager in offline mode
+                  </p>
+                  <p className="text-sm text-orange-700 mt-1">
+                    Your data is stored locally. Sync and email reminders are disabled.
+                  </p>
+                  <div className="mt-4 bg-orange-100 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-orange-900">Disabled Features:</h4>
+                    <ul className="text-sm text-orange-700 mt-1 list-disc list-inside">
+                      <li>Cloud synchronization across devices</li>
+                      <li>Email reminder notifications</li>
+                      <li>Data backup to cloud</li>
+                    </ul>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    exitOfflineMode();
+                    // This will trigger the login form to show
+                  }}
+                  className="ml-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Authentication Settings */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Authentication</h2>
-          </div>
-          <div className="px-6 py-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-900">Keep me logged in</label>
-                <p className="text-sm text-gray-500">Stay signed in across app restarts</p>
+        {!isOfflineMode && (
+          <div className="bg-white shadow rounded-lg mb-6">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Authentication</h2>
+            </div>
+            <div className="px-6 py-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-gray-900">Keep me logged in</label>
+                  <p className="text-sm text-gray-500">Stay signed in across app restarts</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={keepLoggedIn}
+                    onChange={(e) => handleKeepLoggedInChange(e.target.checked)}
+                    disabled={isLoading}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={keepLoggedIn}
-                  onChange={(e) => handleKeepLoggedInChange(e.target.checked)}
-                  disabled={isLoading}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div>
+                  <label className="text-sm font-medium text-gray-900">Switch to offline mode</label>
+                  <p className="text-sm text-gray-500">Use JobManager without sync and email reminders</p>
+                </div>
+                <button
+                  onClick={() => {
+                    enableOfflineMode();
+                  }}
+                  className="px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  <span className="mr-1">🔌</span>
+                  Go Offline
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Sync Settings */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Sync</h2>
+        <div className={`shadow rounded-lg mb-6 ${isOfflineMode ? 'bg-gray-50 border border-gray-200' : 'bg-white'}`}>
+          <div className={`px-6 py-4 border-b ${isOfflineMode ? 'border-gray-200 bg-gray-100' : 'border-gray-200'}`}>
+            <h2 className={`text-lg font-semibold ${isOfflineMode ? 'text-gray-500' : 'text-gray-900'}`}>
+              Sync {isOfflineMode && '(Disabled in Offline Mode)'}
+            </h2>
           </div>
           <div className="px-6 py-4 space-y-4">
-            {syncStatus ? (
+            {isOfflineMode ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">🔌</div>
+                <p className="text-gray-500 font-medium">Sync is disabled in offline mode</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Sign in to enable cloud synchronization across devices
+                </p>
+              </div>
+            ) : syncStatus ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-gray-50 rounded-lg p-3">
@@ -314,30 +398,56 @@ export const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Danger Zone */}
+        {/* Account Actions */}
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-red-600">Account Actions</h2>
+            <h2 className="text-lg font-semibold text-red-600">
+              {isOfflineMode ? 'Offline Mode Actions' : 'Account Actions'}
+            </h2>
           </div>
           <div className="px-6 py-4">
-            {/* Sign Out */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900">Sign out</p>
-                <p className="text-sm text-gray-500">Sign out of your account</p>
+            {isOfflineMode ? (
+              /* Offline mode actions */
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Exit offline mode</p>
+                  <p className="text-sm text-gray-500">Return to login screen to sign in</p>
+                </div>
+                <button
+                  onClick={() => {
+                    exitOfflineMode();
+                    onClose?.() || onNavigate?.('dashboard');
+                  }}
+                  disabled={isLoading}
+                  className={`mt-3 sm:mt-0 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
+                    isLoading 
+                      ? 'bg-gray-400 text-white cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  }`}
+                >
+                  {isLoading ? 'Exiting...' : 'Sign In'}
+                </button>
               </div>
-              <button
-                onClick={handleSignOut}
-                disabled={isLoading}
-                className={`mt-3 sm:mt-0 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
-                  isLoading 
-                    ? 'bg-gray-400 text-white cursor-not-allowed' 
-                    : 'bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
-                }`}
-              >
-                {isLoading ? 'Signing out...' : 'Sign Out'}
-              </button>
-            </div>
+            ) : (
+              /* Authenticated user actions */
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Sign out</p>
+                  <p className="text-sm text-gray-500">Sign out of your account</p>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isLoading}
+                  className={`mt-3 sm:mt-0 w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
+                    isLoading 
+                      ? 'bg-gray-400 text-white cursor-not-allowed' 
+                      : 'bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500'
+                  }`}
+                >
+                  {isLoading ? 'Signing out...' : 'Sign Out'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

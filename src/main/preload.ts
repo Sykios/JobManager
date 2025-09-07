@@ -42,6 +42,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   authClearSession: () => 
     ipcRenderer.invoke('auth:clear-session'),
 
+  // Offline mode operations
+  authEnableOfflineMode: () => 
+    ipcRenderer.invoke('auth:enable-offline-mode'),
+  
+  authExitOfflineMode: () => 
+    ipcRenderer.invoke('auth:exit-offline-mode'),
+  
+  authGetOfflineMode: () => 
+    ipcRenderer.invoke('auth:get-offline-mode'),
+
   // Test deep link handler (for development)
   testDeepLink: (url: string) => 
     ipcRenderer.invoke('test:deep-link', url),
@@ -142,6 +152,11 @@ declare global {
       authSetKeepLoggedIn: (keepLoggedIn: boolean) => Promise<{ success: boolean; error?: string }>;
       authGetKeepLoggedIn: () => Promise<boolean>;
       authClearSession: () => Promise<{ success: boolean; error?: string }>;
+      
+      // Offline mode operations
+      authEnableOfflineMode: () => Promise<{ success: boolean; error?: string }>;
+      authExitOfflineMode: () => Promise<{ success: boolean; error?: string }>;
+      authGetOfflineMode: () => Promise<boolean>;
       
       // Test deep link handler
       testDeepLink: (url: string) => Promise<{ success: boolean }>;

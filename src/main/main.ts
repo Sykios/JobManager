@@ -315,6 +315,8 @@ const setupIpcHandlers = (): void => {
   const handlersToRemove = [
     'auth:sign-up', 'auth:sign-in', 'auth:sign-out', 'auth:magic-link', 'auth:reset-password', 
     'auth:update-password', 'auth:get-session', 'auth:get-user', 'auth:refresh',
+    'auth:set-keep-logged-in', 'auth:get-keep-logged-in', 'auth:clear-session',
+    'auth:enable-offline-mode', 'auth:exit-offline-mode', 'auth:get-offline-mode',
     'sync:status', 'sync:config:get', 'sync:config:update', 'sync:manual', 
     'sync:shutdown', 'sync:retry-connection', 'sync:trigger', 'sync:configure',
     'app:quit-after-sync', 'file:upload', 'file:save', 'file:read', 'file:delete', 
@@ -497,6 +499,42 @@ const setupIpcHandlers = (): void => {
     } catch (error) {
       console.error('Clear session error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // Offline mode handlers
+  ipcMain.handle('auth:enable-offline-mode', async () => {
+    try {
+      console.log('Enabling offline mode - disabling sync service');
+      // Disable sync when entering offline mode
+      if (syncService) {
+        await syncService.updateConfig({ enableSync: false });
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Enable offline mode error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('auth:exit-offline-mode', async () => {
+    try {
+      console.log('Exiting offline mode');
+      return { success: true };
+    } catch (error) {
+      console.error('Exit offline mode error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('auth:get-offline-mode', async () => {
+    try {
+      // Offline mode is managed by the renderer process via localStorage
+      // This handler is here for consistency but not actively used
+      return false;
+    } catch (error) {
+      console.error('Get offline mode error:', error);
+      return false;
     }
   });
 

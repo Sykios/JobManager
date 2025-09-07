@@ -7,7 +7,7 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOfflineMode } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -21,11 +21,11 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     );
   }
 
-  // Show login form if not authenticated
-  if (!isAuthenticated) {
+  // Show login form if not authenticated and not in offline mode
+  if (!isAuthenticated && !isOfflineMode) {
     return <LoginForm />;
   }
 
-  // Render the app if authenticated
+  // Render the app if authenticated or in offline mode
   return <>{children}</>;
 };

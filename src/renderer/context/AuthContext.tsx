@@ -19,6 +19,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isOfflineMode: boolean;
   signUp: (email: string, password: string) => Promise<{
     user: User | null;
     session: Session | null;
@@ -37,6 +38,8 @@ interface AuthContextType {
     user: User | null;
     error: any;
   }>;
+  enableOfflineMode: () => void;
+  exitOfflineMode: () => void;
   // Add development bypass function
   setDevBypass: (user: User, session: Session) => void;
   // Add refresh auth state function
@@ -61,6 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useEffect(() => {
     // Initialize auth state
@@ -70,6 +74,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const initializeAuth = async () => {
     try {
       setIsLoading(true);
+      
+      // Check for offline mode preference first
+      const offlineMode = localStorage.getItem('jobmanager_offline_mode');
+      if (offlineMode === 'true') {
+        console.log('🔌 Offline mode enabled - skipping authentication');
+        setIsOfflineMode(true);
+        setIsLoading(false);
+        return;
+      }
       
       // Check for development bypass first
       if (process.env.NODE_ENV === 'development') {
@@ -159,6 +172,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('jobmanager_dev_bypass');
       }
       
+      // Clear offline mode if it exists
+      localStorage.removeItem('jobmanager_offline_mode');
+      setIsOfflineMode(false);
+      
       const result = await window.electronAPI.authSignOut();
       
       // Clear local state regardless of API result
@@ -171,14 +188,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear local state even on error
       setSession(null);
       setUser(null);
+      setIsOfflineMode(false);
       
       // Clear development bypass even on error
       if (process.env.NODE_ENV === 'development') {
         localStorage.removeItem('jobmanager_dev_bypass');
       }
       
+      // Clear offline mode even on error
+      localStorage.removeItem('jobmanager_offline_mode');
+      
       return { error: { message: error instanceof Error ? error.message : 'Unknown error' } };
     }
+  };
+
+  const enableOfflineMode = async () => {
+    console.log('🔌 Enabling offline mode');
+    setIsOfflineMode(true);
+    setUser(null);
+    setSession(null);
+    localStorage.setItem('jobmanager_offline_mode', 'true');
+    
+    // Notify main process to disable sync
+    try {
+      await window.electronAPI.authEnableOfflineMode();
+    } catch (error) {
+      console.warn('Failed to notify main process about offline mode:', error);
+    }
+  };
+
+  const exitOfflineMode = async () => {
+    console.log('🌐 Exiting offline mode');
+    setIsOfflineMode(false);
+    localStorage.removeItem('jobmanager_offline_mode');
+    
+    // Notify main process
+    try {
+      await window.electronAPI.authExitOfflineMode();
+    } catch (error) {
+      console.warn('Failed to notify main process about exiting offline mode:', error);
+    }
+    // This will trigger the login form to show again
   };
 
   const signInWithMagicLink = async (email: string) => {
@@ -241,12 +291,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     session,
     isLoading,
     isAuthenticated: !!user,
+    isOfflineMode,
     signUp,
     signIn,
     signOut,
     signInWithMagicLink,
     resetPassword,
     updatePassword,
+    enableOfflineMode,
+    exitOfflineMode,
     setDevBypass,
     refreshAuthState,
   };

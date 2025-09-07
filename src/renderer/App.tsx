@@ -16,13 +16,15 @@ import { Settings } from './pages/Settings';
 import { DatabaseProvider } from './context/ApplicationContext';
 import { FileServiceProvider } from './context/FileServiceContext';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 
 export type PageType = 'dashboard' | 'applications' | 'new-application' | 'application-detail' | 'application-edit' | 'companies' | 'company-detail' | 'contacts' | 'contact-detail' | 'files' | 'calendar' | 'reminders' | 'settings';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [pageState, setPageState] = useState<any>(null);
   const [showShutdownDialog, setShowShutdownDialog] = useState(false);
+  const { isOfflineMode } = useAuth();
 
   // Listen for shutdown sync dialog trigger from main process
   useEffect(() => {
@@ -331,25 +333,31 @@ const App: React.FC = () => {
         </div>
       }
     >
-      <AuthProvider>
-        <AuthGuard>
-          <DatabaseProvider>
-            <FileServiceProvider>
-              <Layout currentPage={currentPage} onPageChange={handlePageChange}>
-                {renderCurrentPage()}
-              </Layout>
-              
-              {/* Shutdown Sync Dialog */}
-              <ShutdownSyncDialog
-                isOpen={showShutdownDialog}
-                onComplete={handleShutdownSyncComplete}
-                onCancel={handleShutdownSyncCancel}
-              />
-            </FileServiceProvider>
-          </DatabaseProvider>
-        </AuthGuard>
-      </AuthProvider>
+      <Layout currentPage={currentPage} onPageChange={handlePageChange}>
+        {renderCurrentPage()}
+      </Layout>
+      
+      {/* Shutdown Sync Dialog */}
+      <ShutdownSyncDialog
+        isOpen={showShutdownDialog}
+        onComplete={handleShutdownSyncComplete}
+        onCancel={handleShutdownSyncCancel}
+      />
     </ErrorBoundary>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AuthGuard>
+        <DatabaseProvider>
+          <FileServiceProvider>
+            <AppContent />
+          </FileServiceProvider>
+        </DatabaseProvider>
+      </AuthGuard>
+    </AuthProvider>
   );
 };
 

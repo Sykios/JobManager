@@ -8,7 +8,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
-  const { user } = useAuth();
+  const { user, isOfflineMode } = useAuth();
   
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
@@ -18,7 +18,15 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">JM</span>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900">JobManager</h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-semibold text-gray-900">JobManager</h1>
+            {isOfflineMode && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <span className="mr-1">🔌</span>
+                Offline Mode
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -61,17 +69,24 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
             onClick={() => onNavigate?.('settings')}
             title="Profil & Einstellungen"
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              isOfflineMode 
+                ? 'bg-gradient-to-br from-orange-500 to-orange-600' 
+                : 'bg-gradient-to-br from-blue-500 to-blue-600'
+            }`}>
               <span className="text-white font-medium text-sm">
-                {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                {isOfflineMode ? '🔌' : (user?.email ? user.email.charAt(0).toUpperCase() : 'U')}
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-gray-700">
-                {user?.email ? user.email.split('@')[0] : 'User'}
+                {isOfflineMode ? 'Offline Mode' : (user?.email ? user.email.split('@')[0] : 'User')}
               </span>
               <span className="text-xs text-gray-500">
-                {user?.email?.includes('dev@') ? 'Development' : 'Benutzer'}
+                {isOfflineMode 
+                  ? 'Local data only' 
+                  : (user?.email?.includes('dev@') ? 'Development' : 'Benutzer')
+                }
               </span>
             </div>
           </div>

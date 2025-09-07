@@ -11,7 +11,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-  const { user, session, setDevBypass, refreshAuthState } = useAuth();
+  const { user, session, setDevBypass, refreshAuthState, enableOfflineMode } = useAuth();
 
   // Load keep logged in preference
   useEffect(() => {
@@ -185,6 +185,37 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
               '📧 Send Login Link'
             )}
           </button>
+
+          {/* Skip Login Button */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500">or</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              console.log('🔌 User chose to skip login - enabling offline mode');
+              enableOfflineMode();
+              onSuccess?.();
+            }}
+            className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <span className="mr-2">🔌</span>
+            Skip Login (Offline Mode)
+          </button>
+
+          <div className="text-center">
+            <p className="text-xs text-gray-500">
+              Offline mode lets you use JobManager without signing in. 
+              <br />
+              <strong>Note:</strong> Sync and email reminders will be disabled.
+            </p>
+          </div>
 
           <div className="text-center">
             {/* Development Mode Shortcuts */}
