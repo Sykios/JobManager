@@ -3,20 +3,20 @@
 ## 📊 Project Statistics
 
 ```
+-------------------------------------------------------------------------------
 Language                     files          blank        comment           code
 -------------------------------------------------------------------------------
-HTML                             2          48421              0         225324
-TypeScript                     109           3200           1432          24992
-JSON                             4              0              0          15989
+TypeScript                     109           3287           1461          25723
 JavaScript                      12             87             47            875
-Markdown                         8             85              0            462
+Markdown                         8             87              0            478
 YAML                             4             12              0            106
 CSS                              3              3              7             19
 Text                             1              3              0             18
 -------------------------------------------------------------------------------
-SUM:                           143          51811           1486         267785
+SUM:                           137           3479           1515          27219
+-------------------------------------------------------------------------------
 ```
-*Excludes: node_modules, venv, .git, dist directories*
+*Excludes: node_modules, venv, .git, dist directories, .js & html files*
 
 Ein digitales Bewerbungs-Management-Tool für Berufseinsteiger (Mich), um Bewerbungen zu organisieren, den Überblick über Fristen und Status zu behalten und stressfrei durch den Bewerbungsprozess zu gehen.
 
