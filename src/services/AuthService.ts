@@ -1,4 +1,7 @@
 import { createClient, SupabaseClient, User, Session, AuthError } from '@supabase/supabase-js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { app } from 'electron';
 
 export interface AuthConfig {
   supabaseUrl: string;
@@ -29,11 +32,68 @@ export class AuthService {
     // Note: Don't load persistent login setting here in main process
     // This will be handled by the renderer process via IPC
     
+    // Create custom file-based storage for Electron main process
+    const sessionFile = path.join(app.getPath('userData'), 'supabase-session.json');
+    
+    const fileStorage = {
+      getItem: (key: string): string | null => {
+        try {
+          if (!fs.existsSync(sessionFile)) {
+            return null;
+          }
+          const data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+          return data[key] || null;
+        } catch (error) {
+          console.warn('Error reading session file:', error);
+          return null;
+        }
+      },
+      setItem: (key: string, value: string): void => {
+        try {
+          let data: Record<string, any> = {};
+          if (fs.existsSync(sessionFile)) {
+            try {
+              data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+            } catch {
+              // If file is corrupted, start fresh
+              data = {};
+            }
+          }
+          data[key] = value;
+          
+          // Ensure directory exists
+          const dir = path.dirname(sessionFile);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+          
+          fs.writeFileSync(sessionFile, JSON.stringify(data, null, 2));
+          console.log('Session saved to:', sessionFile);
+        } catch (error) {
+          console.error('Error writing session file:', error);
+        }
+      },
+      removeItem: (key: string): void => {
+        try {
+          if (!fs.existsSync(sessionFile)) {
+            return;
+          }
+          const data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+          delete data[key];
+          fs.writeFileSync(sessionFile, JSON.stringify(data, null, 2));
+          console.log('Session key removed:', key);
+        } catch (error) {
+          console.error('Error removing session key:', error);
+        }
+      },
+    };
+    
     this.supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
-        persistSession: true, // Always enable session persistence for Supabase
-        detectSessionInUrl: false
+        persistSession: true,
+        detectSessionInUrl: false,
+        storage: fileStorage, // Custom file-based storage for Electron
       }
     });
 
@@ -359,10 +419,29 @@ export class AuthService {
     try {
       await this.supabase.auth.signOut({ scope: 'local' });
       this.currentSession = null;
+      
+      // Also manually clear the session file as backup
+      this.clearSessionFile();
     } catch (error) {
       console.error('Error clearing session:', error);
       // Force clear session even if API call fails
       this.currentSession = null;
+      this.clearSessionFile();
+    }
+  }
+
+  /**
+   * Manually clear the session file (backup method)
+   */
+  private clearSessionFile(): void {
+    try {
+      const sessionFile = path.join(app.getPath('userData'), 'supabase-session.json');
+      if (fs.existsSync(sessionFile)) {
+        fs.unlinkSync(sessionFile);
+        console.log('Session file cleared');
+      }
+    } catch (error) {
+      console.error('Error clearing session file:', error);
     }
   }
 }
