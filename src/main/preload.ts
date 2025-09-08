@@ -99,6 +99,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.invoke('window:minimize'),
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
+  openDevTools: () => ipcRenderer.invoke('window:open-dev-tools'),
 
   // Updater operations
   updater: {
@@ -211,6 +212,7 @@ declare global {
       minimize: () => Promise<void>;
       maximize: () => Promise<void>;
       close: () => Promise<void>;
+      openDevTools: () => Promise<void>;
       
       // Updater operations
       updater: {

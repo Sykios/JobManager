@@ -96,14 +96,41 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
   const triggerSync = async () => {
     try {
       setIsLoading(true);
+      console.log('Triggering manual sync...');
       const result = await window.electronAPI.triggerManualSync();
+      console.log('Manual sync result:', result);
       if (result.success) {
         // Reload sync status
         const status = await window.electronAPI.getSyncStatus();
         setSyncStatus(status);
+        console.log('Sync status after manual sync:', status);
+      } else {
+        console.error('Manual sync failed:', result);
       }
     } catch (error) {
       console.error('Error triggering sync:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const retrySync = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Retrying sync connection...');
+      const result = await window.electronAPI.retryConnection();
+      console.log('Retry connection result:', result);
+      
+      if (result.success) {
+        // Reload sync status after successful retry
+        const status = await window.electronAPI.getSyncStatus();
+        setSyncStatus(status);
+        console.log('Sync status after retry:', status);
+      } else {
+        console.error('Sync retry failed:', result.message);
+      }
+    } catch (error) {
+      console.error('Error retrying sync connection:', error);
     } finally {
       setIsLoading(false);
     }
@@ -330,20 +357,103 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
                     </p>
                   </div>
                 </div>
+
+                {/* Sync Status Details */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      {syncStatus.syncAvailable ? (
+                        <span className="text-green-500 text-lg">✅</span>
+                      ) : (
+                        <span className="text-red-500 text-lg">⚠️</span>
+                      )}
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <h4 className="text-sm font-medium text-blue-900">
+                        Sync-Verbindung: {syncStatus.syncAvailable ? 'Verfügbar' : 'Nicht verfügbar'}
+                      </h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        {syncStatus.syncAvailable 
+                          ? 'Cloud-Synchronisation ist bereit und funktionsfähig.'
+                          : 'Keine Verbindung zur Cloud-API. Überprüfen Sie Ihre Internetverbindung oder versuchen Sie es erneut.'
+                        }
+                      </p>
+                      {!syncStatus.syncAvailable && (
+                        <p className="text-xs text-blue-600 mt-2">
+                          <strong>Tipp:</strong> Öffnen Sie die Entwicklertools (F12) für detaillierte Sync-Logs.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 
-                {syncStatus.syncEnabled && syncStatus.syncAvailable && (
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {syncStatus.syncEnabled && syncStatus.syncAvailable && (
+                    <button
+                      onClick={triggerSync}
+                      disabled={isLoading}
+                      className={`px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                        isLoading 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                      }`}
+                    >
+                      {isLoading ? 'Synchronisiert...' : 'Jetzt synchronisieren'}
+                    </button>
+                  )}
+                  
+                  {!syncStatus.syncAvailable && (
+                    <button
+                      onClick={retrySync}
+                      disabled={isLoading}
+                      className={`px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                        isLoading 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500'
+                      }`}
+                    >
+                      {isLoading ? 'Verbinde...' : 'Sync-Verbindung wiederherstellen'}
+                    </button>
+                  )}
+                  
+                  {/* Dev Tools Helper Button */}
                   <button
-                    onClick={triggerSync}
-                    disabled={isLoading}
-                    className={`w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
-                      isLoading 
-                        ? 'bg-gray-400 cursor-not-allowed' 
-                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                    }`}
+                    onClick={() => {
+                      console.log('=== SYNC DEBUG INFO ===');
+                      console.log('Current sync status:', syncStatus);
+                      console.log('User authenticated:', !!user);
+                      console.log('Offline mode:', isOfflineMode);
+                      console.log('=== END DEBUG INFO ===');
+                      if (window.electronAPI && 'openDevTools' in window.electronAPI) {
+                        (window.electronAPI as any).openDevTools();
+                      }
+                    }}
+                    className="px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                   >
-                    {isLoading ? 'Synchronisiert...' : 'Jetzt synchronisieren'}
+                    📊 Debug Info & Dev Tools
                   </button>
-                )}
+                  
+                  {syncStatus.syncAvailable && !syncStatus.syncEnabled && (
+                    <button
+                      onClick={async () => {
+                        // Re-enable sync if it was disabled
+                        setIsLoading(true);
+                        try {
+                          await retrySync();
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      disabled={isLoading}
+                      className={`px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                        isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {isLoading ? 'Aktiviere...' : 'Sync aktivieren'}
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               <p className="text-gray-500">Lade Sync-Status...</p>

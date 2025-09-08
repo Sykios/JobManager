@@ -146,6 +146,7 @@ export class SyncService {
 
     // Test connection to Vercel API
     if (this.config.enableSync) {
+      console.log('Sync enabled, testing connection to API:', this.config.apiBaseUrl);
       try {
         await this.testConnection();
         console.log('Successfully connected to sync API');
@@ -161,7 +162,11 @@ export class SyncService {
           await this.saveSyncSetting('sync_available', false);
         }
       } catch (error) {
-        console.warn('Could not connect to sync API, running in offline mode:', error);
+        console.error('Could not connect to sync API, running in offline mode:', {
+          apiUrl: this.config.apiBaseUrl,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          enableSync: this.config.enableSync
+        });
         // Mark sync as unavailable and continue
         await this.saveSyncSetting('sync_available', false);
         this.config.enableSync = false; // Disable sync for this session
@@ -177,10 +182,23 @@ export class SyncService {
    */
   async testConnection(): Promise<boolean> {
     try {
+      console.log('Testing connection to sync API...');
       const response = await this.httpClient.get('/api/synchronizeJobManager/health');
+      console.log('Connection test successful:', response.status, response.data);
       await this.saveSyncSetting('sync_available', true);
       return response.status === 200;
     } catch (error) {
+      console.error('Connection test failed:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        status: axios.isAxiosError(error) ? error.response?.status : 'No status',
+        data: axios.isAxiosError(error) ? error.response?.data : 'No data',
+        config: axios.isAxiosError(error) ? {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          timeout: error.config?.timeout,
+          headers: error.config?.headers ? Object.keys(error.config.headers) : 'No headers'
+        } : 'No config'
+      });
       await this.saveSyncSetting('sync_available', false);
       throw new Error(`Connection test failed: ${error}`);
     }
@@ -652,6 +670,7 @@ export class SyncService {
     syncInProgress: boolean;
     syncEnabled: boolean;
     syncAvailable: boolean;
+    isOnline: boolean;
   }> {
     const lastSync = await this.getSyncSetting('last_sync_time', null);
     const syncAvailable = await this.getSyncSetting('sync_available', false);
@@ -665,6 +684,7 @@ export class SyncService {
       syncInProgress: this.syncInProgress,
       syncEnabled: this.config.enableSync,
       syncAvailable: syncAvailable,
+      isOnline: syncAvailable && this.config.enableSync, // Consider online if sync is both available and enabled
     };
   }
 
@@ -702,14 +722,29 @@ export class SyncService {
    * Retry connection to sync API
    */
   async retryConnection(): Promise<boolean> {
+    console.log('Attempting to retry sync connection...');
     try {
       await this.testConnection();
       this.config.enableSync = true; // Re-enable sync if connection succeeds
       await this.saveSyncSetting('enable_sync', true);
       console.log('Connection retry successful, sync re-enabled');
+      
+      // Also try to perform a sync to test full functionality
+      try {
+        console.log('Testing full sync functionality after reconnection...');
+        await this.performFullSync();
+        console.log('Full sync test successful after reconnection');
+      } catch (syncError) {
+        console.warn('Connection restored but sync test failed:', syncError);
+        // Connection works but sync failed, still consider it a success
+      }
+      
       return true;
     } catch (error) {
-      console.warn('Connection retry failed:', error);
+      console.error('Connection retry failed:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack'
+      });
       await this.saveSyncSetting('sync_available', false);
       return false;
     }

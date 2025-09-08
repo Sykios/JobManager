@@ -358,7 +358,7 @@ const setupIpcHandlers = (): void => {
     'sync:shutdown', 'sync:retry-connection', 'sync:trigger', 'sync:configure',
     'app:quit-after-sync', 'file:upload', 'file:save', 'file:read', 'file:delete', 
     'file:openPath', 'file:open', 'db:execute', 'db:query', 'app:version',
-    'window:minimize', 'window:maximize', 'window:close',
+    'window:minimize', 'window:maximize', 'window:close', 'window:open-dev-tools',
     'updater:check-for-updates', 'updater:download-update', 'updater:install-update'
   ];
   
@@ -924,6 +924,12 @@ const setupIpcHandlers = (): void => {
   ipcMain.handle('window:close', () => {
     if (mainWindow) {
       mainWindow.close();
+    }
+  });
+
+  ipcMain.handle('window:open-dev-tools', () => {
+    if (mainWindow) {
+      mainWindow.webContents.openDevTools();
     }
   });
 
