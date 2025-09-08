@@ -1,6 +1,7 @@
 // Main pages exports
 export { Calendar } from './Calendar';
-export { ContactsPage } from './Contacts';
+export { ContactsPage } from './contacts';
+export { CompaniesPage } from './companies';
 export { Dashboard } from './Dashboard';
 export { default as FilesPage } from './FilesPage';
 export { RemindersPage } from './Reminders';
@@ -10,3 +11,7 @@ export { StatusManagementDemo } from './StatusManagementDemo';
 
 // Application pages
 export * from './applications';
+
+// Company and Contact details
+export * from './companies';
+export * from './contacts';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CompanyModel } from '../../models/Company';
-import { Company } from '../../types';
-import { CompanyForm, CompanyCard } from '../components/companies';
+import { CompanyModel } from '../../../models/Company';
+import { Company } from '../../../types';
+import { CompanyForm, CompanyCard } from '../../components/companies';
 
 // Types for IPC-based company operations
 interface CompanyFilters {
