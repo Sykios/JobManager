@@ -267,11 +267,6 @@ export const ContactList: React.FC<ContactListProps> = ({
         </div>
       </div>
 
-      {/* Contact count */}
-      <div className="contact-count">
-        {contacts.length === 1 ? '1 Kontakt' : `${contacts.length} Kontakte`}
-      </div>
-
       {/* Contacts grid/list */}
       <div className={`contacts-grid ${compact ? 'compact' : ''}`}>
         {sortedContacts.map(contact => (
@@ -341,6 +336,7 @@ export const ContactList: React.FC<ContactListProps> = ({
         }
 
         .contacts-grid {
+          margin-top: -8px;
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
           gap: 16px;

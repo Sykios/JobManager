@@ -544,7 +544,7 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
             onClick={() => setShowDuplicates(!showDuplicates)}
             className="btn-secondary"
           >
-            👥 Duplikate ({duplicates.length})
+            👥 Duplikate suchen
           </button>
           <button
             type="button"
