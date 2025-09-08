@@ -281,7 +281,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
         {!isOfflineMode && (
           <div className="bg-white shadow rounded-lg mb-6">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Authentication</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Authentifizierung</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
               <div className="flex items-center justify-between">
