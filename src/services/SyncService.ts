@@ -107,14 +107,21 @@ export class SyncService {
     if (!authService?.isAuthenticated()) {
       console.log('User not authenticated, sync disabled');
       this.config.enableSync = false;
+      await this.saveSyncSetting('enable_sync', false);
       await this.saveSyncSetting('sync_available', false);
       return;
     }
 
-    // Load sync settings from database
-    await this.loadSyncSettings();
+    // If user is authenticated, enable sync by default
+    console.log('User authenticated, enabling sync...');
+    this.config.enableSync = true;
+    await this.saveSyncSetting('enable_sync', true);
 
-    // Test connection to Vercel API - only if sync is enabled
+    // Load other sync settings from database (but keep enableSync as true)
+    const lastSyncTime = await this.getSyncSetting('last_sync_time', null);
+    console.log('Last sync time:', lastSyncTime);
+
+    // Test connection to Vercel API
     if (this.config.enableSync) {
       try {
         await this.testConnection();
@@ -581,8 +588,14 @@ export class SyncService {
    * Load sync settings from database
    */
   private async loadSyncSettings(): Promise<void> {
-    const enableSync = await this.getSyncSetting('enable_sync', true);
-    this.config.enableSync = enableSync;
+    // Only load enableSync setting if user is not authenticated
+    // If user is authenticated, we want to keep sync enabled by default
+    const authService = getAuthService();
+    if (!authService?.isAuthenticated()) {
+      const enableSync = await this.getSyncSetting('enable_sync', true);
+      this.config.enableSync = enableSync;
+    }
+    // Load other settings as needed here in the future
   }
 
   /**
