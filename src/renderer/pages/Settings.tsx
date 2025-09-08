@@ -135,7 +135,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
           setUpdateStatus('error');
           // Handle specific error messages
           if (downloadResult.error?.includes('Please check update first')) {
-            setUpdateMessage('Bitte suchen Sie erneut nach Updates vor dem Herunterladen.');
+            setUpdateMessage('JobManager ist bereits auf dem neuesten Stand.');
           } else {
             setUpdateMessage(downloadResult.error || 'Fehler beim Herunterladen des Updates');
           }
