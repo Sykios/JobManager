@@ -51,9 +51,25 @@ jobs:
       run: npm run build
       
     - name: Build and publish to GitHub Releases
-      run: npm run publish
+      run: |
+        echo "🔧 Building and publishing with electron-builder..."
+        echo "Tag: ${{ github.ref_name }}"
+        echo "Pre-release: ${EP_PRE_RELEASE}"
+        npm run publish -- --publish=always
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        DEBUG: electron-builder
+        
+    - name: Create GitHub Release (fallback)
+      if: always()
+      uses: softprops/action-gh-release@v2
+      with:
+        files: release/*
+        prerelease: ${{ contains(github.ref_name, '-') }}
+        generate_release_notes: true
+        name: Release ${{ github.ref_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
