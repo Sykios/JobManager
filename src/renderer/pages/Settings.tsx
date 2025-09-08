@@ -13,11 +13,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'downloading' | 'ready' | 'error'>('idle');
   const [updateMessage, setUpdateMessage] = useState<string>('');
+  const [currentVersion, setCurrentVersion] = useState<string>('');
 
   // Load user preferences and sync status
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        // Load current app version
+        const version = await window.electronAPI.getVersion();
+        setCurrentVersion(version);
+
         // Load keep logged in preference from localStorage (renderer process)
         const savedPref = localStorage.getItem('jobmanager_keep_logged_in');
         const keepLoggedInPref = savedPref === 'true';
@@ -472,8 +477,16 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
           <div className="px-6 py-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-gray-900">Software-Updates</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-gray-900">Software-Updates</h3>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-500">Aktuelle Version</span>
+                    <div className="text-sm font-semibold text-gray-900">
+                      v{currentVersion || 'Lädt...'}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600">
                   Halten Sie Ihre JobManager-App mit den neuesten Funktionen und Sicherheits-Updates auf dem aktuellen Stand.
                   Ihre Datenbank bleibt bei Updates erhalten.
                 </p>
