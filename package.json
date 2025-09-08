@@ -144,15 +144,15 @@
           ]
         }
       ],
-      "forceCodeSigning": false,
-      "publisherName": "Sykios"
+      "forceCodeSigning": false
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "differentialPackage": true
+      "differentialPackage": true,
+      "publisherDisplayName": "Sykios"
     },
     "linux": {
       "target": [
