@@ -54,13 +54,33 @@ function main() {
     execSync('git pull origin main', { stdio: 'inherit' });
 
     // Update package.json version
-    console.log(`📝 Updating package.json version to ${version}...`);
-    execSync(`npm version ${version} --no-git-tag-version`, { stdio: 'inherit' });
+    console.log(`📝 Checking current version...`);
+    const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+    const currentVersion = packageJson.version;
+    
+    if (currentVersion === version) {
+      console.log(`⚠️  Version ${version} is already set in package.json. Skipping version update.`);
+    } else {
+      console.log(`📝 Updating package.json version from ${currentVersion} to ${version}...`);
+      execSync(`npm version ${version} --no-git-tag-version`, { stdio: 'inherit' });
+    }
 
-    // Commit the version change
-    console.log('💾 Committing version change...');
-    execSync('git add package.json package-lock.json', { stdio: 'inherit' });
-    execSync(`git commit -m "chore: bump version to ${version}"`, { stdio: 'inherit' });
+    // Check if there are any changes to commit
+    let hasChanges = false;
+    try {
+      execSync('git diff --exit-code package.json package-lock.json', { stdio: 'pipe' });
+    } catch (error) {
+      hasChanges = true;
+    }
+
+    // Commit the version change if there are changes
+    if (hasChanges) {
+      console.log('💾 Committing version change...');
+      execSync('git add package.json package-lock.json', { stdio: 'inherit' });
+      execSync(`git commit -m "chore: bump version to ${version}"`, { stdio: 'inherit' });
+    } else {
+      console.log('📝 No version changes to commit.');
+    }
 
     // Create and push tag
     const tag = `v${version}`;
