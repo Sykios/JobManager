@@ -1,6 +1,6 @@
 {
   "name": "jobmanager",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Ein digitales Bewerbungs-Management-Tool für Berufseinsteiger",
   "main": "dist/main/main.js",
   "homepage": "https://github.com/Sykios/JobManager",
