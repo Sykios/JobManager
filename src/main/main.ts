@@ -218,15 +218,28 @@ const initializeAutoUpdater = (): void => {
       return;
     }
 
-    // By default, auto-updater only checks for production releases (vx.x.x)
-    autoUpdater.allowPrerelease = false; // Change to true to include pre-releases
+    // Configure auto-updater settings
+    autoUpdater.allowPrerelease = false; // Only stable releases
+    autoUpdater.autoDownload = false; // Manual download control
+    autoUpdater.autoInstallOnAppQuit = false; // Manual install control
 
-    // Additional configuration for debugging
+    // Set up GitHub provider explicitly
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'Sykios',
+      repo: 'JobManager',
+      private: false,
+    });
+
+    // Enhanced logging for debugging
     autoUpdater.logger = console;
     
     console.log('Auto updater configuration:');
     console.log('- allowPrerelease:', autoUpdater.allowPrerelease);
+    console.log('- autoDownload:', autoUpdater.autoDownload);
     console.log('- currentVersion:', app.getVersion());
+    console.log('- platform:', process.platform);
+    console.log('- arch:', process.arch);
 
     // Set up update events
     autoUpdater.on('checking-for-update', () => {

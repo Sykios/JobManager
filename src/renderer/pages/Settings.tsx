@@ -111,42 +111,42 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
 
   const handleCheckForUpdates = async () => {
     setUpdateStatus('checking');
-    setUpdateMessage('Checking for updates...');
+    setUpdateMessage('Suche nach Updates...');
 
     try {
       const result = await (window as any).electronAPI?.updater?.checkForUpdates();
       
       if (!result.success) {
         setUpdateStatus('error');
-        setUpdateMessage(result.error || 'Failed to check for updates');
+        setUpdateMessage(result.error || 'Fehler beim Suchen nach Updates');
         return;
       }
 
       if (result.updateInfo) {
         setUpdateStatus('downloading');
-        setUpdateMessage(`Found update v${result.updateInfo.version}. Downloading...`);
+        setUpdateMessage(`Update v${result.updateInfo.version} gefunden. Wird heruntergeladen...`);
         
         const downloadResult = await (window as any).electronAPI?.updater?.downloadUpdate();
         
         if (downloadResult.success) {
           setUpdateStatus('ready');
-          setUpdateMessage('Update downloaded! Click "Install & Restart" to apply.');
+          setUpdateMessage('Update heruntergeladen! Klicken Sie auf "Installieren & Neustarten".');
         } else {
           setUpdateStatus('error');
           // Handle specific error messages
           if (downloadResult.error?.includes('Please check update first')) {
-            setUpdateMessage('Please check for updates again before downloading.');
+            setUpdateMessage('Bitte suchen Sie erneut nach Updates vor dem Herunterladen.');
           } else {
-            setUpdateMessage(downloadResult.error || 'Failed to download update');
+            setUpdateMessage(downloadResult.error || 'Fehler beim Herunterladen des Updates');
           }
         }
       } else {
         setUpdateStatus('idle');
-        setUpdateMessage('You are running the latest version.');
+        setUpdateMessage('Sie verwenden die neueste Version.');
       }
     } catch (error) {
       setUpdateStatus('error');
-      setUpdateMessage('An unexpected error occurred while checking for updates.');
+      setUpdateMessage('Ein unerwarteter Fehler ist beim Suchen nach Updates aufgetreten.');
     }
   };
 
@@ -155,7 +155,7 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
       await (window as any).electronAPI?.updater?.installUpdate();
     } catch (error) {
       setUpdateStatus('error');
-      setUpdateMessage('Failed to install update. Please try again.');
+      setUpdateMessage('Fehler beim Installieren des Updates. Bitte versuchen Sie es erneut.');
     }
   };
 
