@@ -54,6 +54,9 @@ export class AuthService {
    */
   async initialize(): Promise<Session | null> {
     try {
+      console.log('🔐 Initializing AuthService...');
+      
+      // Always try to get the current session from Supabase
       const { data: { session }, error } = await this.supabase.auth.getSession();
       
       if (error) {
@@ -61,8 +64,15 @@ export class AuthService {
         return null;
       }
 
-      this.currentSession = session;
-      return session;
+      if (session) {
+        console.log('✅ Found existing session for user:', session.user?.email);
+        this.currentSession = session;
+        return session;
+      } else {
+        console.log('❌ No existing session found');
+        this.currentSession = null;
+        return null;
+      }
     } catch (error) {
       console.error('Auth initialization error:', error);
       return null;

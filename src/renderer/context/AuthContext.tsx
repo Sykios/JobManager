@@ -112,11 +112,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Normal authentication flow
+      // Check "keep logged in" preference
+      const keepLoggedIn = localStorage.getItem('jobmanager_keep_logged_in');
+      console.log('🔐 Keep logged in preference:', keepLoggedIn);
+      
+      if (keepLoggedIn !== 'true') {
+        console.log('🚪 Keep logged in disabled - clearing any existing session');
+        // User chose not to stay logged in, clear any existing session
+        await window.electronAPI.authClearSession();
+        setIsLoading(false);
+        return;
+      }
+      
+      // Attempt to restore session if keep logged in is enabled
+      console.log('🔐 Attempting to restore session...');
       const currentSession = await window.electronAPI.authGetSession();
       if (currentSession) {
+        console.log('✅ Session restored successfully for user:', currentSession.user?.email);
         setSession(currentSession);
         setUser(currentSession.user);
+      } else {
+        console.log('❌ No valid session found - user needs to login again');
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -176,6 +192,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('jobmanager_offline_mode');
       setIsOfflineMode(false);
       
+      // Clear keep logged in preference when explicitly signing out
+      localStorage.removeItem('jobmanager_keep_logged_in');
+      
       const result = await window.electronAPI.authSignOut();
       
       // Clear local state regardless of API result
@@ -197,6 +216,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Clear offline mode even on error
       localStorage.removeItem('jobmanager_offline_mode');
+      
+      // Clear keep logged in preference even on error
+      localStorage.removeItem('jobmanager_keep_logged_in');
       
       return { error: { message: error instanceof Error ? error.message : 'Unknown error' } };
     }

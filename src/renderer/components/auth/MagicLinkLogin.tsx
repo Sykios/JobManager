@@ -37,8 +37,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
       
       // Save keep logged in preference if user chose it
       if (keepLoggedIn) {
+        console.log('💾 Saving "keep logged in" preference');
         localStorage.setItem('jobmanager_keep_logged_in', 'true');
-        window.electronAPI.authSetKeepLoggedIn(true);
+        await window.electronAPI.authSetKeepLoggedIn(true);
+      } else {
+        console.log('🚪 User chose not to stay logged in');
+        localStorage.setItem('jobmanager_keep_logged_in', 'false');
+        await window.electronAPI.authSetKeepLoggedIn(false);
       }
       
       // Refresh auth state to update the context
