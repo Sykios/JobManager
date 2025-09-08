@@ -151,8 +151,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "differentialPackage": true,
-      "publisherDisplayName": "Sykios"
+      "differentialPackage": true
     },
     "linux": {
       "target": [
