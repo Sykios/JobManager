@@ -11,6 +11,14 @@ import * as dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
+// Global state variables
+let mainWindow: BrowserWindow | null = null;
+let syncService: SyncService | null = null;
+
+// Auto-updater state tracking
+let updateInfo: any = null;
+let isUpdateAvailable = false;
+
 /**
  * Handle deep link URLs for authentication callbacks
  */
@@ -129,8 +137,6 @@ if (!gotTheLock) {
 
 // Global auth and sync service instances
 let authService: ReturnType<typeof createAuthService> | null = null;
-let syncService: SyncService | null = null;
-let mainWindow: BrowserWindow;
 let ipcHandlersSetup = false; // Guard to prevent duplicate IPC handler registration
 if (process.env.NODE_ENV === 'development') {
   try {
@@ -215,6 +221,13 @@ const initializeAutoUpdater = (): void => {
     // By default, auto-updater only checks for production releases (vx.x.x)
     autoUpdater.allowPrerelease = false; // Change to true to include pre-releases
 
+    // Additional configuration for debugging
+    autoUpdater.logger = console;
+    
+    console.log('Auto updater configuration:');
+    console.log('- allowPrerelease:', autoUpdater.allowPrerelease);
+    console.log('- currentVersion:', app.getVersion());
+
     // Set up update events
     autoUpdater.on('checking-for-update', () => {
       console.log('Checking for update...');
@@ -225,6 +238,8 @@ const initializeAutoUpdater = (): void => {
 
     autoUpdater.on('update-available', (info) => {
       console.log('Update available:', info);
+      updateInfo = info;
+      isUpdateAvailable = true;
       if (mainWindow) {
         mainWindow.webContents.send('updater:update-available', info);
       }
@@ -232,6 +247,8 @@ const initializeAutoUpdater = (): void => {
 
     autoUpdater.on('update-not-available', (info) => {
       console.log('Update not available:', info);
+      updateInfo = null;
+      isUpdateAvailable = false;
       if (mainWindow) {
         mainWindow.webContents.send('updater:update-not-available', info);
       }
@@ -239,6 +256,9 @@ const initializeAutoUpdater = (): void => {
 
     autoUpdater.on('error', (err) => {
       console.error('Update error:', err);
+      // Reset state on error
+      updateInfo = null;
+      isUpdateAvailable = false;
       if (mainWindow) {
         mainWindow.webContents.send('updater:error', err.message);
       }
@@ -291,10 +311,10 @@ const createWindow = (): void => {
 
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+    mainWindow?.show();
     // Set fullscreen after showing in development mode for better compatibility
     if (process.env.NODE_ENV === 'development') {
-      mainWindow!.maximize();
+      mainWindow?.maximize();
     }
   });
 
@@ -831,6 +851,9 @@ const setupIpcHandlers = (): void => {
   // File operations
   ipcMain.handle('file:open', async () => {
     try {
+      if (!mainWindow) {
+        return { success: false, error: 'Main window not available' };
+      }
       const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile'],
         filters: [
@@ -885,10 +908,25 @@ const setupIpcHandlers = (): void => {
         return { success: false, error: 'Updates not available in development mode' };
       }
       console.log('Checking for updates...');
+      
+      // Reset state before checking
+      updateInfo = null;
+      isUpdateAvailable = false;
+      
       const result = await autoUpdater.checkForUpdates();
+      
+      // Store the update info for later use
+      if (result?.updateInfo) {
+        updateInfo = result.updateInfo;
+        isUpdateAvailable = true;
+      }
+      
       return { success: true, updateInfo: result?.updateInfo || null };
     } catch (error) {
       console.error('Error checking for updates:', error);
+      // Reset state on error
+      updateInfo = null;
+      isUpdateAvailable = false;
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
@@ -898,6 +936,13 @@ const setupIpcHandlers = (): void => {
       if (!app.isPackaged) {
         return { success: false, error: 'Updates not available in development mode' };
       }
+      
+      // Check if we have update info available
+      if (!isUpdateAvailable || !updateInfo) {
+        console.warn('No update available or update check not performed');
+        return { success: false, error: 'Please check for updates first' };
+      }
+      
       console.log('Starting update download...');
       await autoUpdater.downloadUpdate();
       return { success: true };

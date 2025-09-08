@@ -133,7 +133,12 @@ export const Settings: React.FC<SettingsProps> = ({ onClose, onNavigate }) => {
           setUpdateMessage('Update downloaded! Click "Install & Restart" to apply.');
         } else {
           setUpdateStatus('error');
-          setUpdateMessage(downloadResult.error || 'Failed to download update');
+          // Handle specific error messages
+          if (downloadResult.error?.includes('Please check update first')) {
+            setUpdateMessage('Please check for updates again before downloading.');
+          } else {
+            setUpdateMessage(downloadResult.error || 'Failed to download update');
+          }
         }
       } else {
         setUpdateStatus('idle');
