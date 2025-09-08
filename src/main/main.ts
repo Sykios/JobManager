@@ -393,10 +393,23 @@ const setupIpcHandlers = (): void => {
       }
       const result = await authService.signIn(email, password);
       
-      // If sign-in successful, reinitialize sync service
+      // If sign-in successful, ensure session is established before sync initialization
       if (result.session && !result.error) {
-        console.log('User signed in, reinitializing sync service...');
-        await initializeSyncService();
+        console.log('User signed in, ensuring session is established...');
+        
+        // Wait a moment for session to be fully persisted
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Verify session is available
+        const isAuthenticated = await authService.isAuthenticated();
+        console.log('Session verification after login:', isAuthenticated);
+        
+        if (isAuthenticated) {
+          console.log('Session confirmed, reinitializing sync service...');
+          await initializeSyncService();
+        } else {
+          console.warn('Session not established properly after login');
+        }
       }
       
       return result;

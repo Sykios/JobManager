@@ -295,17 +295,59 @@ export class AuthService {
   }
 
   /**
-   * Check if user is authenticated
+   * Check if user is authenticated (checks Supabase directly)
    */
-  isAuthenticated(): boolean {
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession();
+      if (error) {
+        console.warn('Error checking authentication:', error);
+        return false;
+      }
+      // Update cached session
+      this.currentSession = session;
+      return !!session?.user;
+    } catch (error) {
+      console.error('Exception checking authentication:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Synchronous version that checks cached state only
+   */
+  isAuthenticatedSync(): boolean {
     return !!this.currentSession?.user;
   }
 
   /**
-   * Get access token for API calls
+   * Get access token for API calls (always fresh from Supabase)
    */
-  getAccessToken(): string | null {
-    return this.currentSession?.access_token || null;
+  async getAccessToken(): Promise<string | null> {
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession();
+      if (error) {
+        console.warn('Error getting access token:', error);
+        return null;
+      }
+      // Update cached session
+      this.currentSession = session;
+      const token = session?.access_token || null;
+      console.log('Access token retrieved:', token ? `${token.substring(0, 20)}...` : 'null');
+      return token;
+    } catch (error) {
+      console.error('Exception getting access token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Synchronous version that returns cached token
+   */
+  getAccessTokenSync(): string | null {
+    const token = this.currentSession?.access_token || null;
+    console.log('Sync access token:', token ? `${token.substring(0, 20)}...` : 'null');
+    return token;
   }
 
   /**

@@ -57,12 +57,24 @@ export class SyncService {
     });
 
     // Add request interceptor for authentication
-    this.httpClient.interceptors.request.use((config) => {
+    this.httpClient.interceptors.request.use(async (config) => {
       const authService = getAuthService();
-      const accessToken = authService?.getAccessToken();
-      
-      if (accessToken) {
-        config.headers['Authorization'] = `Bearer ${accessToken}`;
+      if (authService) {
+        try {
+          const accessToken = await authService.getAccessToken();
+          console.log('HTTP interceptor: Access token obtained:', accessToken ? 'Yes' : 'No');
+          
+          if (accessToken) {
+            config.headers['Authorization'] = `Bearer ${accessToken}`;
+            console.log('HTTP interceptor: Authorization header set');
+          } else {
+            console.warn('HTTP interceptor: No access token available');
+          }
+        } catch (error) {
+          console.error('HTTP interceptor: Error getting access token:', error);
+        }
+      } else {
+        console.warn('HTTP interceptor: Auth service not available');
       }
       
       return config;
@@ -102,9 +114,20 @@ export class SyncService {
   async initialize(): Promise<void> {
     console.log('Initializing SyncService...');
     
-    // Check if user is authenticated
+    // Check if user is authenticated (using fresh Supabase check)
     const authService = getAuthService();
-    if (!authService?.isAuthenticated()) {
+    if (!authService) {
+      console.log('Auth service not available, sync disabled');
+      this.config.enableSync = false;
+      await this.saveSyncSetting('enable_sync', false);
+      await this.saveSyncSetting('sync_available', false);
+      return;
+    }
+
+    const isAuthenticated = await authService.isAuthenticated();
+    console.log('Authentication check result:', isAuthenticated);
+    
+    if (!isAuthenticated) {
       console.log('User not authenticated, sync disabled');
       this.config.enableSync = false;
       await this.saveSyncSetting('enable_sync', false);
@@ -591,9 +614,20 @@ export class SyncService {
     // Only load enableSync setting if user is not authenticated
     // If user is authenticated, we want to keep sync enabled by default
     const authService = getAuthService();
-    if (!authService?.isAuthenticated()) {
+    if (authService) {
+      const isAuthenticated = await authService.isAuthenticated();
+      if (!isAuthenticated) {
+        const enableSync = await this.getSyncSetting('enable_sync', true);
+        this.config.enableSync = enableSync;
+        console.log('Loaded sync settings - user not authenticated, enableSync:', enableSync);
+      } else {
+        console.log('Loaded sync settings - user authenticated, keeping sync enabled');
+      }
+    } else {
+      // No auth service, load from settings
       const enableSync = await this.getSyncSetting('enable_sync', true);
       this.config.enableSync = enableSync;
+      console.log('Loaded sync settings - no auth service, enableSync:', enableSync);
     }
     // Load other settings as needed here in the future
   }
