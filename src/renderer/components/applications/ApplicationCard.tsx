@@ -94,7 +94,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
             {application.location && (
               <p className="text-sm text-gray-500 truncate">
                 📍 {application.location}
-                {application.remote_possible && ' • Remote möglich'}
+                {Number(application.remote_possible) === 1 && ' • Remote möglich'}
               </p>
             )}
           </div>
