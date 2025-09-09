@@ -328,7 +328,7 @@ const setupIpcHandlers = (): void => {
     'sync:status', 'sync:config:get', 'sync:config:update', 'sync:manual', 
     'sync:shutdown', 'sync:retry-connection', 'sync:trigger', 'sync:configure',
     'app:quit-after-sync', 'file:upload', 'file:save', 'file:read', 'file:delete', 
-    'file:openPath', 'file:open', 'db:execute', 'db:query', 'app:version',
+    'file:openPath', 'file:open', 'db:execute', 'db:query', 'db:batch-execute', 'app:version',
     'window:minimize', 'window:maximize', 'window:close', 'window:open-dev-tools',
     'updater:check-for-updates', 'updater:download-update', 'updater:install-update'
   ];
@@ -822,6 +822,47 @@ const setupIpcHandlers = (): void => {
       return result;
     } catch (error) {
       console.error('Database query error:', error);
+      throw error;
+    }
+  });
+
+  // Batch database operations
+  ipcMain.handle('db:batch-execute', async (event, operations: Array<{ query: string; params?: any[] }>) => {
+    try {
+      const db = getDatabase();
+      const results = [];
+
+      // Execute all operations in a transaction
+      await db.exec('BEGIN TRANSACTION');
+
+      try {
+        for (const operation of operations) {
+          // Process params to convert Uint8Array-like objects to Buffers for sqlite
+          const processedParams = operation.params?.map(p => {
+            if (p && typeof p === 'object' && !Array.isArray(p) && !(p instanceof Buffer)) {
+                const keys = Object.keys(p);
+                const isUint8ArrayLike = keys.length > 0 && keys.every(k => !isNaN(parseInt(k)));
+
+                if (isUint8ArrayLike) {
+                    const uint8Array = new Uint8Array(Object.values(p));
+                    return Buffer.from(uint8Array);
+                }
+            }
+            return p;
+          });
+
+          const result = await db.run(operation.query, processedParams);
+          results.push(result);
+        }
+
+        await db.exec('COMMIT');
+        return results;
+      } catch (error) {
+        await db.exec('ROLLBACK');
+        throw error;
+      }
+    } catch (error) {
+      console.error('Database batch execute error:', error);
       throw error;
     }
   });
