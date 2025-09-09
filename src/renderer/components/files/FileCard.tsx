@@ -70,8 +70,8 @@ export const FileCard: React.FC<FileCardProps> = ({
         <div className="file-icon-section">
           <span className="file-icon">{getFileIcon()}</span>
           <div className="file-basic-info">
-            <h4 className="file-name" title={file.filename}>
-              {file.filename}
+            <h4 className="file-name" title={file.original_name || file.filename}>
+              {file.original_name || file.filename}
             </h4>
             <div className="file-meta">
               <span className="file-type">{file.getTypeLabel()}</span>

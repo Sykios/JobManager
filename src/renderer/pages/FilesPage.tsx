@@ -37,7 +37,7 @@ const FilesPage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = file.original_name || filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -52,7 +52,7 @@ const FilesPage: React.FC = () => {
     if (!fileService || !file.id) return;
     try {
       // Show confirmation dialog
-      const confirmed = confirm(`Möchten Sie die Datei "${file.filename}" wirklich löschen?`);
+      const confirmed = confirm(`Möchten Sie die Datei "${file.original_name || file.filename}" wirklich löschen?`);
       if (!confirmed) return;
 
       await fileService.deleteFile(file.id);

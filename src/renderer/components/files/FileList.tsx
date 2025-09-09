@@ -43,7 +43,8 @@ export const FileList: React.FC<FileListProps> = ({
       // Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        return file.filename.toLowerCase().includes(query) ||
+        const displayName = file.original_name || file.filename;
+        return displayName.toLowerCase().includes(query) ||
                (file.description && file.description.toLowerCase().includes(query));
       }
       
@@ -54,7 +55,9 @@ export const FileList: React.FC<FileListProps> = ({
       
       switch (sortBy) {
         case 'name':
-          comparison = a.filename.localeCompare(b.filename, 'de');
+          const nameA = a.original_name || a.filename;
+          const nameB = b.original_name || b.filename;
+          comparison = nameA.localeCompare(nameB, 'de');
           break;
         case 'type':
           comparison = a.getTypeLabel().localeCompare(b.getTypeLabel(), 'de');
