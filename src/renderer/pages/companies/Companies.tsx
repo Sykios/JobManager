@@ -36,6 +36,28 @@ interface CompanyWithApplications extends Company {
   latestApplicationDate?: string;
 }
 
+// Confirm Modal component
+const ConfirmModal = ({ open, company, onCancel, onConfirm }: {
+  open: boolean;
+  company?: CompanyWithApplications;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!open || !company) return null;
+  return (
+    <div className="modal-backdrop">
+      <div className="modal">
+        <h3>Unternehmen löschen</h3>
+        <p>Sind Sie sicher, dass Sie {company.name} löschen möchten?</p>
+        <div className="modal-actions">
+          <button onClick={onConfirm} className="btn-confirm">Ja, löschen</button>
+          <button onClick={onCancel} className="btn-cancel">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) => void }> = ({ onNavigate }) => {
   // State management
   const [companies, setCompanies] = useState<CompanyWithApplications[]>([]);
@@ -43,7 +65,8 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
   const [selectedCompany, setSelectedCompany] = useState<CompanyWithApplications | null>(null);
   const [statistics, setStatistics] = useState<CompanyStatistics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [formSaving, setFormSaving] = useState(false); // separate for save operations
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set()); // per-item deleting state
   const [error, setError] = useState<string>('');
   
   // UI state
@@ -54,6 +77,9 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
   const [showStatistics, setShowStatistics] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [duplicates, setDuplicates] = useState<{ reason: string; companies: CompanyWithApplications[] }[]>([]);
+
+  // non-blocking confirm modal state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; company?: CompanyWithApplications }>({ open: false });
 
   // Company service using IPC
   const companyService = {
@@ -333,25 +359,61 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
     setShowForm(true);
   };
 
-  const handleDeleteCompany = async (company: CompanyWithApplications) => {
-    if (!window.confirm(`Soll das Unternehmen "${company.name}" wirklich gelöscht werden?`)) {
+  // Optimistic delete: immediate UI removal, restore on failure
+  const performDeleteOptimistic = async (company: CompanyWithApplications) => {
+    if (!company.id) {
+      setError('Ungültige Unternehmens-ID');
       return;
     }
 
+    const id = company.id;
+    setError('');
+
+    // Snapshot to allow restore on failure
+    const prevCompanies = companies;
+    const prevSelected = selectedCompany;
+
+    // mark as deleting (allows per-item spinner)
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    // Optimistically remove from UI so app remains responsive
+    setCompanies(prev => prev.filter(c => c.id !== id));
+    if (prevSelected?.id === id) setSelectedCompany(null);
+    setConfirmDelete({ open: false });
+
     try {
-      setSaving(true);
-      await companyService.delete(company.id);
-      await loadCompanies();
+      await companyService.delete(id);
+
+      // Optionally re-sync with backend in background (non-blocking)
+      // loadCompanies().catch(console.warn);
     } catch (err) {
+      // Restore previous state (guard against duplicates)
+      setCompanies(prev => (prev.some(c => c.id === id) ? prev : [...prevCompanies]));
+      if (prevSelected?.id === id) setSelectedCompany(prevSelected);
+
       setError(err instanceof Error ? err.message : 'Fehler beim Löschen des Unternehmens');
     } finally {
-      setSaving(false);
+      // clear per-item deleting flag
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
+  };
+
+  // wrapper that opens the non-blocking confirm modal
+  const confirmDeleteCompany = (company: CompanyWithApplications) => {
+    setConfirmDelete({ open: true, company });
   };
 
   const handleSaveCompany = async (companyData: CompanyCreateData | CompanyUpdateData) => {
     try {
-      setSaving(true);
+      setFormSaving(true);
 
       if (editingCompany) {
         await companyService.update(editingCompany.id, companyData);
@@ -365,7 +427,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
     } catch (err) {
       throw err; // Let the form handle the error
     } finally {
-      setSaving(false);
+      setFormSaving(false);
     }
   };
 
@@ -482,7 +544,9 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
         </div>
       </div>
     );
-  };  // Render duplicates panel
+  };
+
+  // Render duplicates panel
   const renderDuplicatesPanel = () => {
     if (!showDuplicates) return null;
 
@@ -525,7 +589,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteCompany(company)}
+                          onClick={() => confirmDeleteCompany(company)}
                           className="action-btn delete"
                         >
                           Löschen
@@ -557,7 +621,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
             type="button"
             onClick={handleCreateCompany}
             className="btn-primary"
-            disabled={saving}
+            disabled={formSaving}
           >
             🏢 Neues Unternehmen
           </button>
@@ -579,7 +643,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
             type="button"
             onClick={handleExportCSV}
             className="btn-secondary"
-            disabled={saving}
+            disabled={formSaving}
           >
             📥 CSV Export
           </button>
@@ -627,7 +691,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
                 applicationCount={company.applicationCount}
                 latestApplicationDate={company.latestApplicationDate}
                 onEdit={handleEditCompany}
-                onDelete={handleDeleteCompany}
+                onDelete={confirmDeleteCompany}
                 onView={(company) => {
                   if (onNavigate) {
                     onNavigate('company-detail', { company, companyId: company.id });
@@ -635,6 +699,7 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
                     setSelectedCompany(selectedCompany?.id === company.id ? null : company);
                   }
                 }}
+                isDeleting={company.id ? deletingIds.has(company.id) : false}
                 className={selectedCompany?.id === company.id ? 'ring-2 ring-blue-500' : ''}
               />
             ))}
@@ -650,11 +715,18 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
               company={editingCompany || undefined}
               onSave={handleSaveCompany}
               onCancel={handleCancelForm}
-              isLoading={saving}
+              isLoading={formSaving}
             />
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        company={confirmDelete.company}
+        onCancel={() => setConfirmDelete({ open: false })}
+        onConfirm={() => performDeleteOptimistic(confirmDelete.company!)}
+      />
 
       <style>{`
         .companies-page {
@@ -1047,15 +1119,70 @@ export const CompaniesPage: React.FC<{ onNavigate?: (page: string, state?: any) 
             grid-template-columns: 1fr;
           }
 
-          .duplicate-company {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-          }
+        .duplicate-company {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        }
+
+        .modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+
+        .modal {
+          background: white;
+          border-radius: 8px;
+          padding: 20px;
+          max-width: 400px;
+          width: 100%;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal h3 {
+          margin: 0 0 10px 0;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .modal p {
+          margin: 0 0 20px 0;
+          color: #6b7280;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+        }
+
+        .btn-confirm {
+          background: #dc2626;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .btn-cancel {
+          background: #6b7280;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
         }
       `}</style>
     </div>
   );
 };
-
-export default CompaniesPage;

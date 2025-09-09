@@ -14,6 +14,7 @@ export interface ApplicationListProps {
   onStatusChange?: (application: Application, newStatus: ApplicationStatus, note?: string) => Promise<void>;
   onView?: (application: Application) => void;
   onCreateNew?: () => void;
+  deletingIds?: Set<number>;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -47,6 +48,7 @@ export const ApplicationList: React.FC<ApplicationListProps> = ({
   onStatusChange,
   onView,
   onCreateNew,
+  deletingIds = new Set(),
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -250,6 +252,7 @@ export const ApplicationList: React.FC<ApplicationListProps> = ({
               onDelete={onDelete}
               onStatusChange={onStatusChange}
               onView={onView}
+              isDeleting={application.id ? deletingIds.has(application.id) : false}
             />
           ))}
         </div>

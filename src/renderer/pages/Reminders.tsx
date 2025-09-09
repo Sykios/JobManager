@@ -10,6 +10,40 @@ import { Badge } from '../components/ui/Badge';
 import { ReminderForm } from '../components/reminders/ReminderForm';
 import { ReminderTemplates } from '../components/reminders/ReminderTemplates';
 
+// Confirm Modal component
+const ConfirmModal = ({ open, reminder, onCancel, onConfirm }: {
+  open: boolean;
+  reminder?: ReminderModel;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!open || !reminder) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Erinnerung löschen</h3>
+        <p className="text-gray-600 mb-6">
+          Sind Sie sicher, dass Sie die Erinnerung "{reminder.title}" löschen möchten?
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+          >
+            Ja, löschen
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface RemindersPageProps {
   onNavigate?: (page: string, state?: any) => void;
 }
@@ -32,6 +66,8 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<ReminderModel | null>(null);
   const [activeTab, setActiveTab] = useState<'reminders' | 'templates'>('reminders');
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set()); // per-item deleting state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; reminder?: ReminderModel }>({ open: false }); // non-blocking confirm modal state
   
   const [filters, setFilters] = useState<ReminderFilters>({
     search: '',
@@ -242,15 +278,52 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handleDeleteReminder = async (id: number) => {
-    if (!confirm('Erinnerung wirklich löschen?')) return;
-    
+  const handleDeleteReminder = (reminder: ReminderModel) => {
+    setConfirmDelete({ open: true, reminder });
+  };
+
+  // Optimistic delete: immediate UI removal, restore on failure
+  const performDeleteOptimistic = async (reminder: ReminderModel) => {
+    if (!reminder.id) {
+      console.error('Invalid reminder ID');
+      return;
+    }
+
+    const id = reminder.id;
+
+    // Mark as deleting (allows per-item spinner)
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    // Optimistically remove from UI so app remains responsive
+    setAllReminders(prev => prev.filter(r => r.id !== id));
+    setConfirmDelete({ open: false });
+
     try {
       await ReminderService.deleteReminder(id);
-      await refreshData();
+      // Optionally re-sync with backend in background (non-blocking)
+      // await refreshData();
     } catch (error) {
+      // Restore previous state (guard against duplicates)
+      setAllReminders(prev => {
+        if (prev.some(r => r.id === id)) {
+          return prev; // Already restored
+        }
+        return [...prev, reminder];
+      });
+
       console.error('Failed to delete reminder:', error);
       alert('Fehler beim Löschen der Erinnerung');
+    } finally {
+      // Clear per-item deleting flag
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -354,7 +427,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const renderReminderCard = (reminder: ReminderModel) => (
+  const renderReminderCard = (reminder: ReminderModel, isDeleting: boolean = false) => (
     <div key={reminder.id} className={`bg-white border rounded-lg p-4 hover:shadow-md transition-shadow ${
       reminder.isOverdue() ? 'border-red-300 bg-red-50' : 
       reminder.isDueToday() ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'
@@ -403,14 +476,16 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
             <>
               <button
                 onClick={() => handleCompleteReminder(reminder.id)}
-                className="p-2 text-green-600 hover:bg-green-100 rounded"
+                disabled={isDeleting}
+                className={`p-2 text-green-600 hover:bg-green-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Als erledigt markieren"
               >
                 ✓
               </button>
               <div className="relative group">
                 <button
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded"
+                  disabled={isDeleting}
+                  className={`p-2 text-blue-600 hover:bg-blue-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   title="Schlummern"
                 >
                   ⏰
@@ -418,19 +493,22 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
                 <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg p-2 space-y-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                   <button
                     onClick={() => handleSnoozeReminder(reminder.id, 1)}
-                    className="block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded"
+                    disabled={isDeleting}
+                    className={`block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     1 Stunde
                   </button>
                   <button
                     onClick={() => handleSnoozeReminder(reminder.id, 24)}
-                    className="block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded"
+                    disabled={isDeleting}
+                    className={`block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     1 Tag
                   </button>
                   <button
                     onClick={() => handleSnoozeReminder(reminder.id, 168)}
-                    className="block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded"
+                    disabled={isDeleting}
+                    className={`block w-full text-left px-3 py-1 text-sm hover:bg-gray-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     1 Woche
                   </button>
@@ -441,18 +519,20 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
           
           <button
             onClick={() => handleEditReminder(reminder)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+            disabled={isDeleting}
+            className={`p-2 text-gray-600 hover:bg-gray-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Bearbeiten"
           >
             ✏️
           </button>
           
           <button
-            onClick={() => handleDeleteReminder(reminder.id)}
-            className="p-2 text-red-600 hover:bg-red-100 rounded"
+            onClick={() => handleDeleteReminder(reminder)}
+            disabled={isDeleting}
+            className={`p-2 text-red-600 hover:bg-red-100 rounded ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Löschen"
           >
-            🗑️
+            {isDeleting ? '⏳' : '🗑️'}
           </button>
         </div>
       </div>
@@ -808,7 +888,7 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
               </Button>
             </div>
           ) : (
-            reminders.map(renderReminderCard)
+            reminders.map(reminder => renderReminderCard(reminder, reminder.id ? deletingIds.has(reminder.id) : false))
           )}
         </div>
       ) : (
@@ -840,6 +920,13 @@ export const RemindersPage: React.FC<RemindersPageProps> = ({ onNavigate }) => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        reminder={confirmDelete.reminder}
+        onCancel={() => setConfirmDelete({ open: false })}
+        onConfirm={() => performDeleteOptimistic(confirmDelete.reminder!)}
+      />
     </div>
     </div>
   );

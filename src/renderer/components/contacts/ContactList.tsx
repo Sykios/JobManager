@@ -14,6 +14,7 @@ interface ContactListProps {
   showActions?: boolean;
   compact?: boolean;
   className?: string;
+  deletingIds?: Set<number>;
 }
 
 export const ContactList: React.FC<ContactListProps> = ({
@@ -27,7 +28,8 @@ export const ContactList: React.FC<ContactListProps> = ({
   emptyMessage = 'Keine Kontakte gefunden',
   showActions = true,
   compact = false,
-  className = ''
+  className = '',
+  deletingIds = new Set()
 }) => {
   const [sortBy, setSortBy] = useState<'name' | 'created' | 'updated' | 'position'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -280,6 +282,7 @@ export const ContactList: React.FC<ContactListProps> = ({
             isSelected={selectedContactId === contact.id}
             showActions={showActions}
             compact={compact}
+            isDeleting={contact.id ? deletingIds.has(contact.id) : false}
           />
         ))}
       </div>

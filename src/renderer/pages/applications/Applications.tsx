@@ -3,6 +3,40 @@ import { ApplicationList } from '../../components/applications/ApplicationList';
 import { Button } from '../../components/ui/Button';
 import { Application, ApplicationStatus } from '../../../types';
 
+// Confirm Modal component
+const ConfirmModal = ({ open, application, onCancel, onConfirm }: {
+  open: boolean;
+  application?: Application;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!open || !application) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Bewerbung löschen</h3>
+        <p className="text-gray-600 mb-6">
+          Sind Sie sicher, dass Sie die Bewerbung "{application.title}" löschen möchten?
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors"
+          >
+            Ja, löschen
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ApplicationsProps {
   onNavigate?: (page: string, state?: any) => void;
 }
@@ -11,6 +45,8 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set()); // per-item deleting state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; application?: Application }>({ open: false }); // non-blocking confirm modal state
 
   // Load applications on component mount
   useEffect(() => {
@@ -60,20 +96,53 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
   }
 };
 
-  const handleDelete = async (application: Application) => {
-    if (!confirm(`Möchten Sie die Bewerbung "${application.title}" wirklich löschen?`)) {
+  const handleDelete = (application: Application) => {
+    setConfirmDelete({ open: true, application });
+  };
+
+  // Optimistic delete: immediate UI removal, restore on failure
+  const performDeleteOptimistic = async (application: Application) => {
+    if (!application.id) {
+      console.error('Invalid application ID');
       return;
     }
 
+    const id = application.id;
+
+    // Mark as deleting (allows per-item spinner)
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    // Optimistically remove from UI so app remains responsive
+    setApplications(prev => prev.filter(app => app.id !== id));
+    setConfirmDelete({ open: false });
+
     try {
       const deleteQuery = 'DELETE FROM applications WHERE id = ?';
-      await window.electronAPI.executeQuery(deleteQuery, [application.id]);
-      
-      // Refresh the list
-      await loadApplications();
+      await window.electronAPI.executeQuery(deleteQuery, [id]);
+      // Optionally re-sync with backend in background (non-blocking)
+      // await loadApplications();
     } catch (error) {
+      // Restore previous state (guard against duplicates)
+      setApplications(prev => {
+        if (prev.some(app => app.id === id)) {
+          return prev; // Already restored
+        }
+        return [...prev, application];
+      });
+
       console.error('Error deleting application:', error);
       alert('Fehler beim Löschen der Bewerbung');
+    } finally {
+      // Clear per-item deleting flag
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   };
 
@@ -172,6 +241,14 @@ export const Applications: React.FC<ApplicationsProps> = ({ onNavigate }) => {
         onStatusChange={handleStatusChange}
         onView={handleView}
         onCreateNew={handleCreateNew}
+        deletingIds={deletingIds}
+      />
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        application={confirmDelete.application}
+        onCancel={() => setConfirmDelete({ open: false })}
+        onConfirm={() => performDeleteOptimistic(confirmDelete.application!)}
       />
     </div>
   );

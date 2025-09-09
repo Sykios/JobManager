@@ -41,7 +41,8 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
   const [selectedContact, setSelectedContact] = useState<ContactModel | null>(null);
   const [statistics, setStatistics] = useState<ContactStatistics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [formSaving, setFormSaving] = useState(false); // separate for save operations
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set()); // per-item deleting state
   const [error, setError] = useState<string>('');
   
   // UI state
@@ -52,6 +53,9 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
   const [showStatistics, setShowStatistics] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [duplicates, setDuplicates] = useState<Array<{ contacts: ContactModel[]; reason: string }>>([]);
+
+  // non-blocking confirm modal state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; contact?: ContactModel }>({ open: false });
 
   // IPC-based contact service methods
   const contactService = {
@@ -304,29 +308,61 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
     setShowForm(true);
   };
 
-  const handleDeleteContact = async (contact: ContactModel) => {
-    if (!confirm(`Sind Sie sicher, dass Sie ${contact.getFullName()} löschen möchten?`)) {
+  // Optimistic delete: immediate UI removal, restore on failure
+  const performDeleteOptimistic = async (contact: ContactModel) => {
+    if (!contact.id) {
+      setError('Ungültige Kontakt-ID');
       return;
     }
 
+    const id = contact.id;
+    setError('');
+
+    // Snapshot to allow restore on failure
+    const prevContacts = contacts;
+    const prevSelected = selectedContact;
+
+    // mark as deleting (allows per-item spinner)
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    // Optimistically remove from UI so app remains responsive
+    setContacts(prev => prev.filter(c => c.id !== id));
+    if (prevSelected?.id === id) setSelectedContact(null);
+    setConfirmDelete({ open: false });
+
     try {
-      setSaving(true);
-      await contactService.delete(contact.id!);
-      await loadContacts();
-      
-      if (selectedContact?.id === contact.id) {
-        setSelectedContact(null);
-      }
+      await contactService.delete(id);
+
+      // Optionally re-sync with backend in background (non-blocking)
+      // loadContacts().catch(console.warn);
     } catch (err) {
+      // Restore previous state (guard against duplicates)
+      setContacts(prev => (prev.some(c => c.id === id) ? prev : [...prevContacts]));
+      if (prevSelected?.id === id) setSelectedContact(prevSelected);
+
       setError(err instanceof Error ? err.message : 'Fehler beim Löschen des Kontakts');
     } finally {
-      setSaving(false);
+      // clear per-item deleting flag
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
+  };
+
+  // wrapper that opens the non-blocking confirm modal
+  const confirmDeleteContact = (contact: ContactModel) => {
+    setConfirmDelete({ open: true, contact });
   };
 
   const handleSaveContact = async (data: ContactCreateData | ContactUpdateData) => {
     try {
-      setSaving(true);
+      setFormSaving(true);
       setError('');
 
       if (editingContact) {
@@ -342,7 +378,7 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
       setError(err instanceof Error ? err.message : 'Fehler beim Speichern des Kontakts');
       throw err; // Re-throw to prevent form from closing
     } finally {
-      setSaving(false);
+      setFormSaving(false);
     }
   };
 
@@ -496,7 +532,7 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteContact(contact)}
+                          onClick={() => confirmDeleteContact(contact)}
                           className="action-btn delete"
                         >
                           Löschen
@@ -509,6 +545,28 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
             ))}
           </div>
         )}
+      </div>
+    );
+  };
+
+  // Confirm Modal component
+  const ConfirmModal = ({ open, contact, onCancel, onConfirm }: {
+    open: boolean;
+    contact?: ContactModel;
+    onCancel: () => void;
+    onConfirm: () => void;
+  }) => {
+    if (!open || !contact) return null;
+    return (
+      <div className="modal-backdrop">
+        <div className="modal">
+          <h3>Kontakt löschen</h3>
+          <p>Sind Sie sicher, dass Sie {contact.getFullName()} löschen möchten?</p>
+          <div className="modal-actions">
+            <button onClick={onConfirm} className="btn-confirm">Ja, löschen</button>
+            <button onClick={onCancel} className="btn-cancel">Abbrechen</button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -528,7 +586,7 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
             type="button"
             onClick={handleCreateContact}
             className="btn-primary"
-            disabled={saving}
+            disabled={formSaving}
           >
             📋 Neuer Kontakt
           </button>
@@ -613,7 +671,7 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
                 contact={editingContact || undefined}
                 onSave={handleSaveContact}
                 onCancel={handleCancelForm}
-                isLoading={saving}
+                isLoading={formSaving}
               />
             </div>
           </div>
@@ -623,15 +681,23 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
         <ContactList
           contacts={filteredContacts}
           onEdit={handleEditContact}
-          onDelete={handleDeleteContact}
+          onDelete={confirmDeleteContact}
           onSelect={handleSelectContact}
           selectedContactId={selectedContact?.id}
           loading={loading}
           error={error}
           emptyMessage={searchQuery ? 'Keine Kontakte entsprechen der Suche' : 'Noch keine Kontakte vorhanden. Erstellen Sie Ihren ersten Kontakt!'}
           showActions={true}
+          deletingIds={deletingIds}
         />
       </div>
+
+      <ConfirmModal
+        open={confirmDelete.open}
+        contact={confirmDelete.contact}
+        onCancel={() => setConfirmDelete({ open: false })}
+        onConfirm={() => performDeleteOptimistic(confirmDelete.contact!)}
+      />
 
       <style>{`
         .contacts-page {
@@ -1026,6 +1092,63 @@ export const ContactsPage: React.FC<{ onNavigate?: (page: string, state?: any) =
           border-radius: 12px;
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
           position: relative;
+        }
+
+        .modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        }
+
+        .modal {
+          background: white;
+          border-radius: 8px;
+          padding: 20px;
+          max-width: 400px;
+          width: 100%;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal h3 {
+          margin: 0 0 10px 0;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .modal p {
+          margin: 0 0 20px 0;
+          color: #6b7280;
+        }
+
+        .modal-actions {
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+        }
+
+        .btn-confirm {
+          background: #dc2626;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .btn-cancel {
+          background: #6b7280;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
         }
 
         @media (max-width: 768px) {
