@@ -23,7 +23,6 @@ let isUpdateAvailable = false;
  * Handle deep link URLs for authentication callbacks
  */
 const handleDeepLink = async (url: string): Promise<void> => {
-  console.log('Deep link received:', url);
   
   try {
     const parsedUrl = new URL(url);
@@ -49,7 +48,6 @@ const handleDeepLink = async (url: string): Promise<void> => {
       }
       
       if (accessToken && refreshToken) {
-        console.log('Processing magic link authentication...');
         
         // Manually set the session in Supabase
         if (authService) {
@@ -66,7 +64,6 @@ const handleDeepLink = async (url: string): Promise<void> => {
                 mainWindow.webContents.send('auth:magic-link-error', error.message);
               }
             } else {
-              console.log('Magic link authentication successful!');
               // Notify the renderer that authentication was successful
               if (mainWindow) {
                 mainWindow.webContents.send('auth:magic-link-success', data.user);
@@ -145,7 +142,7 @@ if (process.env.NODE_ENV === 'development') {
       hardResetMethod: 'exit'
     });
   } catch (e) {
-    console.log('Electron reload not available in development mode');
+    // Electron reload not available
   }
 }
 
@@ -156,10 +153,6 @@ const initializeAuthService = async (): Promise<void> => {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-    console.log('Environment check:');
-    console.log('SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing');
-    console.log('SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing');
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.warn('Supabase credentials missing, running without authentication');
@@ -174,8 +167,6 @@ const initializeAuthService = async (): Promise<void> => {
 
     authService = createAuthService(authConfig);
     await authService.initialize();
-    
-    console.log('Auth service initialized successfully');
   } catch (error) {
     console.warn('Auth service initialization failed:', error);
   }
@@ -196,8 +187,6 @@ const initializeSyncService = async (): Promise<void> => {
 
     syncService = new SyncService(db, syncConfig);
     await syncService.initialize();
-    
-    console.log('Sync service initialized successfully');
   } catch (error) {
     console.warn('Sync service initialization failed, continuing in offline mode:', error);
     // Continue app initialization even if sync fails - just disable sync
@@ -210,11 +199,8 @@ const initializeSyncService = async (): Promise<void> => {
  */
 const initializeAutoUpdater = (): void => {
   try {
-    console.log('Initializing auto updater...');
-    
     // Configure auto updater (only in production builds)
     if (!app.isPackaged) {
-      console.log('Running in development mode, auto-updater disabled');
       return;
     }
 
@@ -233,24 +219,15 @@ const initializeAutoUpdater = (): void => {
 
     // Enhanced logging for debugging
     autoUpdater.logger = console;
-    
-    console.log('Auto updater configuration:');
-    console.log('- allowPrerelease:', autoUpdater.allowPrerelease);
-    console.log('- autoDownload:', autoUpdater.autoDownload);
-    console.log('- currentVersion:', app.getVersion());
-    console.log('- platform:', process.platform);
-    console.log('- arch:', process.arch);
 
     // Set up update events
     autoUpdater.on('checking-for-update', () => {
-      console.log('Checking for update...');
       if (mainWindow) {
         mainWindow.webContents.send('updater:checking-for-update');
       }
     });
 
     autoUpdater.on('update-available', (info) => {
-      console.log('Update available:', info);
       updateInfo = info;
       isUpdateAvailable = true;
       if (mainWindow) {
@@ -259,7 +236,6 @@ const initializeAutoUpdater = (): void => {
     });
 
     autoUpdater.on('update-not-available', (info) => {
-      console.log('Update not available:', info);
       updateInfo = null;
       isUpdateAvailable = false;
       if (mainWindow) {
@@ -278,20 +254,17 @@ const initializeAutoUpdater = (): void => {
     });
 
     autoUpdater.on('download-progress', (progressObj) => {
-      console.log(`Download speed: ${progressObj.bytesPerSecond} B/s - Downloaded ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`);
       if (mainWindow) {
         mainWindow.webContents.send('updater:download-progress', progressObj);
       }
     });
 
     autoUpdater.on('update-downloaded', (info) => {
-      console.log('Update downloaded:', info);
       if (mainWindow) {
         mainWindow.webContents.send('updater:update-downloaded', info);
       }
     });
 
-    console.log('Auto updater initialized successfully');
   } catch (error) {
     console.warn('Auto updater initialization failed:', error);
   }
@@ -341,11 +314,9 @@ const createWindow = (): void => {
 const setupIpcHandlers = (): void => {
   // Prevent duplicate handler registration
   if (ipcHandlersSetup) {
-    console.log('IPC handlers already set up, skipping...');
     return;
   }
   
-  console.log('Setting up IPC handlers...');
   ipcHandlersSetup = true;
 
   // Remove all existing handlers first to prevent duplicates
@@ -368,7 +339,6 @@ const setupIpcHandlers = (): void => {
 
     // Test deep link handler (for development testing)
   ipcMain.handle('test:deep-link', async (event, testUrl: string) => {
-    console.log('Testing deep link handler with URL:', testUrl);
     await handleDeepLink(testUrl);
     return { success: true };
   });
@@ -395,17 +365,13 @@ const setupIpcHandlers = (): void => {
       
       // If sign-in successful, ensure session is established before sync initialization
       if (result.session && !result.error) {
-        console.log('User signed in, ensuring session is established...');
-        
         // Wait a moment for session to be fully persisted
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Verify session is available
         const isAuthenticated = await authService.isAuthenticated();
-        console.log('Session verification after login:', isAuthenticated);
         
         if (isAuthenticated) {
-          console.log('Session confirmed, reinitializing sync service...');
           await initializeSyncService();
         } else {
           console.warn('Session not established properly after login');
@@ -555,7 +521,6 @@ const setupIpcHandlers = (): void => {
   // Offline mode handlers
   ipcMain.handle('auth:enable-offline-mode', async () => {
     try {
-      console.log('Enabling offline mode - disabling sync service');
       // Disable sync when entering offline mode
       if (syncService) {
         await syncService.updateConfig({ enableSync: false });
@@ -569,7 +534,6 @@ const setupIpcHandlers = (): void => {
 
   ipcMain.handle('auth:exit-offline-mode', async () => {
     try {
-      console.log('Exiting offline mode');
       return { success: true };
     } catch (error) {
       console.error('Exit offline mode error:', error);
@@ -1009,7 +973,6 @@ const setupIpcHandlers = (): void => {
       if (!app.isPackaged) {
         return { success: false, error: 'Updates not available in development mode' };
       }
-      console.log('Checking for updates...');
       
       // Reset state before checking
       updateInfo = null;
@@ -1045,7 +1008,6 @@ const setupIpcHandlers = (): void => {
         return { success: false, error: 'Please check for updates first' };
       }
       
-      console.log('Starting update download...');
       await autoUpdater.downloadUpdate();
       return { success: true };
     } catch (error) {
@@ -1059,7 +1021,6 @@ const setupIpcHandlers = (): void => {
       if (!app.isPackaged) {
         return { success: false, error: 'Updates not available in development mode' };
       }
-      console.log('Installing update and restarting...');
       autoUpdater.quitAndInstall();
       return { success: true };
     } catch (error) {
@@ -1124,7 +1085,6 @@ app.on('before-quit', async (event) => {
         return;
       } else if (status.pendingItems > 0 && (!status.syncAvailable || !status.syncEnabled)) {
         // If we have pending items but sync is not available/enabled, just inform and quit
-        console.log('Quitting with pending changes - sync not available or disabled');
       }
     } catch (error) {
       console.error('Error checking sync status before quit:', error);
