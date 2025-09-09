@@ -122,7 +122,8 @@ export const ContactForm: React.FC<ContactFormProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
+  e.stopPropagation();
     // Mark all fields as touched to show validation errors
     const allFields = Object.keys(formData);
     const touchedFields = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {});

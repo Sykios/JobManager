@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { ContactModel } from '../../../models/Contact';
 import { Contact } from '../../../types';
 import { ContactCreateData, ContactUpdateData } from '../../../services/ContactService';
@@ -348,11 +349,11 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         )}
       </div>
 
-      {/* Contact Creation Modal */}
-      {showCreateForm && (
+      {/* Contact Creation Modal rendered in a portal to avoid nested forms */}
+      {showCreateForm && typeof window !== 'undefined' && ReactDOM.createPortal(
         <div className="contact-creation-modal">
           <div className="modal-overlay" onClick={handleCancelCreateForm}></div>
-          <div className="modal-content">
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <ErrorBoundary
               onError={(error, errorInfo) => {
                 console.error('ErrorBoundary caught error in ContactForm:', error, errorInfo);
@@ -374,7 +375,8 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
               />
             </ErrorBoundary>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`

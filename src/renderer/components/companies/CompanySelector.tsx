@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { CompanyModel } from '../../../models/Company';
 import { Company } from '../../../types';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -336,11 +337,11 @@ export const CompanySelector: React.FC<CompanySelectorProps> = ({
         )}
       </div>
 
-      {/* Company Creation Modal */}
-      {showCreateForm && (
+      {/* Company Creation Modal rendered in a portal to avoid nested forms */}
+      {showCreateForm && typeof window !== 'undefined' && ReactDOM.createPortal(
         <div className="company-creation-modal">
           <div className="modal-overlay" onClick={handleCancelCreateForm}></div>
-          <div className="modal-content">
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <ErrorBoundary
               onError={(error, errorInfo) => {
                 console.error('ErrorBoundary caught error in CompanyForm:', error, errorInfo);
@@ -362,7 +363,8 @@ export const CompanySelector: React.FC<CompanySelectorProps> = ({
               />
             </ErrorBoundary>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
