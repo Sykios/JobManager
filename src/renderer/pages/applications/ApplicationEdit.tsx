@@ -109,9 +109,152 @@ export const ApplicationEdit: React.FC<ApplicationEditProps> = ({
 
       // Handle file uploads if present
       if (files) {
-        // File upload logic would go here
-        // For now, we'll skip file handling in the edit mode
-        console.log('File uploads in edit mode not yet implemented');
+        console.log('Processing file uploads in edit mode...');
+
+        const filesToUpload: Array<{
+          file: File;
+          description: string;
+          type: 'cv' | 'cover_letter' | 'additional';
+        }> = [];
+
+        if (files.cv) {
+          filesToUpload.push({
+            file: files.cv.file,
+            description: files.cv.description || 'Lebenslauf',
+            type: 'cv'
+          });
+        }
+
+        if (files.coverLetter) {
+          filesToUpload.push({
+            file: files.coverLetter.file,
+            description: files.coverLetter.description || 'Anschreiben',
+            type: 'cover_letter'
+          });
+        }
+
+        files.additionalFiles.forEach((fileData: { file: File; description?: string }) => {
+          filesToUpload.push({
+            file: fileData.file,
+            description: fileData.description || fileData.file.name,
+            type: 'additional'
+          });
+        });
+
+        console.log(`Uploading ${filesToUpload.length} files...`);
+
+        // Upload files in parallel for better performance
+        const uploadPromises = filesToUpload.map(async (fileData) => {
+          try {
+            // Convert File to ArrayBuffer
+            const arrayBuffer = await fileData.file.arrayBuffer();
+
+            // Determine file type from extension
+            const getFileType = (filename: string) => {
+              const ext = filename.split('.').pop()?.toLowerCase();
+              switch (ext) {
+                case 'pdf': return 'pdf';
+                case 'doc':
+                case 'docx': return 'docx';
+                case 'txt': return 'txt';
+                case 'jpg':
+                case 'jpeg': return 'jpg';
+                case 'png': return 'png';
+                default: return 'other';
+              }
+            };
+
+            const fileType = getFileType(fileData.file.name);
+
+            // Upload file using the API
+            const uploadResult = await window.electronAPI.uploadFile({
+              data: arrayBuffer,
+              filename: fileData.file.name,
+              applicationId: application.id,
+              fileType: fileType,
+              description: fileData.description
+            });
+
+            if (!uploadResult.success) {
+              throw new Error('Upload failed: success = false');
+            }
+
+            // Return file metadata for batch insertion
+            return {
+              success: true,
+              filename: fileData.file.name,
+              metadata: {
+                application_id: application.id,
+                filename: uploadResult.filename,
+                original_name: uploadResult.originalName,
+                file_path: uploadResult.filePath,
+                size: uploadResult.size,
+                mime_type: fileData.file.type || 'application/octet-stream',
+                type: fileType,
+                description: fileData.description,
+                upload_date: new Date().toISOString()
+              }
+            };
+          } catch (fileError) {
+            console.error(`Error uploading file ${fileData.file.name}:`, fileError);
+            return {
+              success: false,
+              filename: fileData.file.name,
+              error: fileError instanceof Error ? fileError.message : 'Unknown error'
+            };
+          }
+        });
+
+        // Wait for all uploads to complete
+        const uploadResults = await Promise.allSettled(uploadPromises);
+
+        // Separate successful and failed uploads
+        const successfulUploads = uploadResults
+          .filter(result => result.status === 'fulfilled' && result.value.success)
+          .map(result => (result as PromiseFulfilledResult<any>).value);
+
+        const failedUploads = uploadResults
+          .filter(result => result.status === 'rejected' ||
+            (result.status === 'fulfilled' && !result.value.success))
+          .map(result => {
+            if (result.status === 'rejected') {
+              return 'Unknown file (Promise rejected)';
+            }
+            return result.value.filename;
+          });
+
+        console.log(`Successfully uploaded ${successfulUploads.length} files`);
+
+        // Batch insert file metadata for successful uploads
+        if (successfulUploads.length > 0) {
+          const batchOperations = successfulUploads.map(upload => ({
+            query: `
+              INSERT INTO files (
+                application_id, filename, original_name, file_path, size,
+                mime_type, type, description, upload_date
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            params: [
+              upload.metadata.application_id,
+              upload.metadata.filename,
+              upload.metadata.original_name,
+              upload.metadata.file_path,
+              upload.metadata.size,
+              upload.metadata.mime_type,
+              upload.metadata.type,
+              upload.metadata.description,
+              upload.metadata.upload_date
+            ]
+          }));
+
+          await window.electronAPI.batchExecute(batchOperations);
+          console.log(`Inserted ${successfulUploads.length} file records into database`);
+        }
+
+        if (failedUploads.length > 0) {
+          console.error('Some files failed to upload:', failedUploads);
+          setError(`Einige Dateien konnten nicht hochgeladen werden: ${failedUploads.join(', ')}`);
+        }
       }
 
       // Navigate back to application detail
