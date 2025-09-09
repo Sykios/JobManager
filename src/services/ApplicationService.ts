@@ -130,9 +130,7 @@ export class ApplicationService {
     await this.queueForSync(result.lastID, 'create', createdApplication.toJSON());
     
     return createdApplication;
-  }
-
-  /**
+  }  /**
    * Get application by ID
    */
   async getById(id: number): Promise<ApplicationModel> {

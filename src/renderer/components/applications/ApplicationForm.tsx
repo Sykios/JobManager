@@ -176,8 +176,15 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
+      console.log('Form validation failed');
+      return;
+    }
+
+    // Prevent submission if already loading
+    if (isLoading) {
+      console.log('Form already loading, preventing submission');
       return;
     }
 
@@ -188,9 +195,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       console.error('Error submitting form:', error);
       // Handle submission errors here
     }
-  };
-
-  const handleInputChange = (field: keyof FormData) => (
+  };  const handleInputChange = (field: keyof FormData) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const value = e.target.type === 'checkbox' 

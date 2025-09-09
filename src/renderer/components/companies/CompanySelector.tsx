@@ -218,7 +218,7 @@ export const CompanySelector: React.FC<CompanySelectorProps> = ({
       <div className="relative">
         <div className="selector-input-container">
           {selectedCompany ? (
-            <div className="selected-company">
+            <div className={`selected-company ${disabled ? 'disabled' : ''}`}>
               <div className="company-info">
                 <div className="company-name">{selectedCompany.name}</div>
                 {selectedCompany.industry && (
@@ -393,6 +393,16 @@ export const CompanySelector: React.FC<CompanySelectorProps> = ({
 
         .selected-company:hover {
           background: #f1f5f9;
+        }
+
+        .selected-company.disabled {
+          background: #f9fafb;
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+
+        .selected-company.disabled:hover {
+          background: #f9fafb;
         }
 
         .company-info {

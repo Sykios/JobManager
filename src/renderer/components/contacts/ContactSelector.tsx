@@ -230,7 +230,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
       <div className="relative">
         <div className="selector-input-container">
           {selectedContact ? (
-            <div className="selected-contact">
+            <div className={`selected-contact ${disabled ? 'disabled' : ''}`}>
               <div className="contact-info">
                 <div className="contact-name">{selectedContact.getFullName()}</div>
                 {selectedContact.position && (
@@ -405,6 +405,16 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
 
         .selected-contact:hover {
           background: #f1f5f9;
+        }
+
+        .selected-contact.disabled {
+          background: #f9fafb;
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+
+        .selected-contact.disabled:hover {
+          background: #f9fafb;
         }
 
         .contact-info {

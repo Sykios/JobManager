@@ -33,20 +33,33 @@ export async function initializeDatabase(): Promise<Database<sqlite3.Database, s
 
   try {
     const dbPath = getDatabasePath();
-    console.log(`Initializing database at: ${dbPath}`);
 
     db = await open({
       filename: dbPath,
       driver: sqlite3.Database,
     });
 
-    // Enable foreign keys
+    // Enable performance optimizations
     await db.exec('PRAGMA foreign_keys = ON');
     
-    // Enable WAL mode for better performance
+    // Enable WAL mode for better performance and concurrency
     await db.exec('PRAGMA journal_mode = WAL');
     
-    console.log('Database initialized successfully');
+    // Increase cache size for better performance (negative value = KB)
+    await db.exec('PRAGMA cache_size = -64000'); // 64MB cache
+    
+    // Enable synchronous mode for better performance (with WAL, this is safe)
+    await db.exec('PRAGMA synchronous = NORMAL');
+    
+    // Increase temp store to memory for better performance
+    await db.exec('PRAGMA temp_store = MEMORY');
+    
+    // Enable memory-mapped I/O for better performance
+    await db.exec('PRAGMA mmap_size = 268435456'); // 256MB
+    
+    // Optimize for typical usage patterns
+    await db.exec('PRAGMA optimize');
+    
     return db;
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -71,7 +84,6 @@ export async function closeDatabase(): Promise<void> {
   if (db) {
     await db.close();
     db = null;
-    console.log('Database connection closed');
   }
 }
 

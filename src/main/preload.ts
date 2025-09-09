@@ -62,6 +62,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   queryDatabase: (query: string, params?: any[]) => 
     ipcRenderer.invoke('db:query', query, params),
+
+  // Batch database operations for better performance
+  batchExecute: (operations: Array<{ query: string; params?: any[] }>) =>
+    ipcRenderer.invoke('db:batch-execute', operations),
+
+  // Optimized application creation
+  createApplicationOptimized: (data: any) =>
+    ipcRenderer.invoke('application:create-optimized', data),
   
   // File operations
   openFile: () => ipcRenderer.invoke('file:open'),
@@ -164,6 +172,13 @@ declare global {
       
       executeQuery: (query: string, params?: any[]) => Promise<any>;
       queryDatabase: (query: string, params?: any[]) => Promise<any>;
+      batchExecute: (operations: Array<{ query: string; params?: any[] }>) => Promise<any[]>;
+      createApplicationOptimized: (data: any) => Promise<{
+        success: boolean;
+        application?: any;
+        executionTime?: number;
+        error?: string;
+      }>;
       openFile: () => Promise<string>;
       saveFile: (data: any) => Promise<boolean>;
       uploadFile: (args: {

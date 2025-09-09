@@ -756,8 +756,6 @@ const setupIpcHandlers = (): void => {
       // Write file to disk
       await fs.promises.writeFile(filePath, buffer, { mode: 0o600 });
       
-      console.log(`File uploaded: ${args.filename} -> ${filePath} (${buffer.length} bytes)`);
-      
       return {
         success: true,
         filePath,
@@ -827,32 +825,25 @@ const setupIpcHandlers = (): void => {
     const { shell } = require('electron');
     return shell.openPath(filePath);
   });
-  // Database operations
+  // Database operations with performance optimizations
   ipcMain.handle('db:execute', async (event, query: string, params?: any[]) => {
     try {
-      console.log('IPC db:execute - Query:', query);
-      
       // Process params to convert Uint8Array-like objects to Buffers for sqlite
       const processedParams = params?.map(p => {
-        // When a Uint8Array is sent over IPC, it becomes an object with numeric string keys.
-        // We check if an object looks like a serialized Uint8Array and convert it back.
         if (p && typeof p === 'object' && !Array.isArray(p) && !(p instanceof Buffer)) {
             const keys = Object.keys(p);
             const isUint8ArrayLike = keys.length > 0 && keys.every(k => !isNaN(parseInt(k)));
-            
+
             if (isUint8ArrayLike) {
                 const uint8Array = new Uint8Array(Object.values(p));
-                console.log(`IPC db:execute - Converted Uint8Array-like object to Buffer of length ${uint8Array.length}`);
                 return Buffer.from(uint8Array);
             }
         }
         return p;
       });
 
-      console.log('IPC db:execute - Params:', processedParams);
       const db = getDatabase();
       const result = await db.run(query, processedParams);
-      console.log('IPC db:execute - Result:', result);
       return result;
     } catch (error) {
       console.error('Database execute error:', error);
@@ -862,15 +853,94 @@ const setupIpcHandlers = (): void => {
 
   ipcMain.handle('db:query', async (event, query: string, params?: any[]) => {
     try {
-      console.log('IPC db:query - Query:', query);
-      console.log('IPC db:query - Params:', params);
       const db = getDatabase();
       const result = await db.all(query, params);
-      console.log('IPC db:query - Result:', result);
       return result;
     } catch (error) {
       console.error('Database query error:', error);
       throw error;
+    }
+  });
+
+  // Optimized application creation with batch operations
+  ipcMain.handle('application:create-optimized', async (event, data: any) => {
+    try {
+      const db = getDatabase();
+
+      // Batch all operations in a single transaction
+      const operations = [
+        {
+          query: `
+            INSERT INTO applications (
+              company_id, contact_id, title, position, job_url, application_channel,
+              salary_range, work_type, location, remote_possible, status, priority,
+              application_date, deadline, follow_up_date, notes, cover_letter,
+              requirements, benefits
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          params: [
+            data.company_id || null,
+            data.contact_id || null,
+            data.title,
+            data.position,
+            data.job_url || null,
+            data.application_channel || null,
+            data.salary_range || null,
+            data.work_type || null,
+            data.location || null,
+            data.remote_possible ? 1 : 0,
+            'draft',
+            data.priority || 1,
+            data.application_date || null,
+            data.deadline || null,
+            data.follow_up_date || null,
+            data.notes || null,
+            data.cover_letter || null,
+            data.requirements || null,
+            data.benefits || null,
+          ]
+        }
+      ];
+
+      // Execute batch operations
+      const results = await db.exec('BEGIN TRANSACTION');
+
+      try {
+        for (const operation of operations) {
+          // Process params to convert Uint8Array-like objects to Buffers for sqlite
+          const processedParams = operation.params?.map(p => {
+            if (p && typeof p === 'object' && !Array.isArray(p) && !(p instanceof Buffer)) {
+                const keys = Object.keys(p);
+                const isUint8ArrayLike = keys.length > 0 && keys.every(k => !isNaN(parseInt(k)));
+
+                if (isUint8ArrayLike) {
+                    const uint8Array = new Uint8Array(Object.values(p));
+                    return Buffer.from(uint8Array);
+                }
+            }
+            return p;
+          });
+
+          await db.run(operation.query, processedParams);
+        }
+
+        await db.exec('COMMIT');
+
+        // Get the created application ID
+        const result = await db.get('SELECT last_insert_rowid() as id');
+        const applicationId = result.id;
+
+        // Get the created application data
+        const application = await db.get('SELECT * FROM applications WHERE id = ?', [applicationId]);
+
+        return { success: true, application };
+      } catch (error) {
+        await db.exec('ROLLBACK');
+        throw error;
+      }
+    } catch (error) {
+      console.error('Application creation error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
 

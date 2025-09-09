@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ApplicationForm } from '../../components/applications/ApplicationForm';
 import { ApplicationCreateData } from '../../../services/ApplicationService';
 
@@ -11,6 +11,16 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+
+  // Cleanup navigation timer on unmount
+  useEffect(() => {
+    return () => {
+      if ((window as any).navigationTimer) {
+        clearTimeout((window as any).navigationTimer);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (
     data: ApplicationCreateData,
     files?: {
@@ -19,45 +29,33 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
       additionalFiles: { file: File; description?: string }[];
     }
   ) => {
+
+    // Prevent duplicate submissions
+    if (isLoading) {
+      console.log('Preventing duplicate submission - already loading');
+      return;
+    }
+
+    // Prevent submission if already submitted successfully
+    if (success) {
+      console.log('Preventing submission - already successful');
+      return;
+    }
+
+    // Set loading state immediately
     setIsLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // First, create the application
-      const query = `
-        INSERT INTO applications (
-          company_id, contact_id, title, position, job_url, application_channel,
-          salary_range, work_type, location, remote_possible, status, priority,
-          application_date, deadline, follow_up_date, notes, cover_letter,
-          requirements, benefits
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      // Use optimized application creation
+      const createResult = await window.electronAPI.createApplicationOptimized(data);
 
-      const params = [
-        data.company_id || null,
-        data.contact_id || null,
-        data.title,
-        data.position,
-        data.job_url || null,
-        data.application_channel || null,
-        data.salary_range || null,
-        data.work_type || null,
-        data.location || null,
-        data.remote_possible ? 1 : 0,
-        'draft',
-        data.priority || 1,
-        data.application_date || null,
-        data.deadline || null,
-        data.follow_up_date || null,
-        data.notes || null,
-        data.cover_letter || null,
-        data.requirements || null,
-        data.benefits || null,
-      ];
+      if (!createResult.success) {
+        throw new Error(createResult.error || 'Failed to create application');
+      }
 
-      const result = await window.electronAPI.executeQuery(query, params);
-      const applicationId = result.lastID;
+      const applicationId = createResult.application?.id;
 
       // Handle file uploads if any files are provided
       if (files && applicationId) {
@@ -83,7 +81,7 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
           });
         }
 
-        files.additionalFiles.forEach(fileData => {
+        files.additionalFiles.forEach((fileData) => {
           filesToUpload.push({
             file: fileData.file,
             description: fileData.description || fileData.file.name,
@@ -91,12 +89,12 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
           });
         });
 
-        // Upload each file using the new file upload API
-        for (const fileData of filesToUpload) {
+        // Upload files in parallel for better performance
+        const uploadPromises = filesToUpload.map(async (fileData) => {
           try {
             // Convert File to ArrayBuffer
             const arrayBuffer = await fileData.file.arrayBuffer();
-            
+
             // Determine file type from extension
             const getFileType = (filename: string) => {
               const ext = filename.split('.').pop()?.toLowerCase();
@@ -111,9 +109,9 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
                 default: return 'other';
               }
             };
-            
+
             const fileType = getFileType(fileData.file.name);
-            
+
             // Upload file using the new API
             const uploadResult = await window.electronAPI.uploadFile({
               data: arrayBuffer,
@@ -122,59 +120,115 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
               fileType: fileType,
               description: fileData.description
             });
-            
+
             if (!uploadResult.success) {
               throw new Error('Upload failed: success = false');
             }
-            
-            // Save file metadata to database
-            const fileQuery = `
-              INSERT INTO files (
-                application_id, filename, original_name, file_path, size, 
-                mime_type, type, description, upload_date
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
 
-            const fileParams = [
-              applicationId,
-              uploadResult.filename,
-              uploadResult.originalName,
-              uploadResult.filePath,
-              uploadResult.size,
-              fileData.file.type || 'application/octet-stream',
-              fileType,
-              fileData.description,
-              new Date().toISOString()
-            ];
-
-            const fileResult = await window.electronAPI.executeQuery(fileQuery, fileParams);
+            // Return file metadata for batch insertion
+            return {
+              success: true,
+              filename: fileData.file.name,
+              metadata: {
+                application_id: applicationId,
+                filename: uploadResult.filename,
+                original_name: uploadResult.originalName,
+                file_path: uploadResult.filePath,
+                size: uploadResult.size,
+                mime_type: fileData.file.type || 'application/octet-stream',
+                type: fileType,
+                description: fileData.description,
+                upload_date: new Date().toISOString()
+              }
+            };
           } catch (fileError) {
             console.error(`Error uploading file ${fileData.file.name}:`, fileError);
-            setError(`Fehler beim Hochladen der Datei ${fileData.file.name}: ${fileError}`);
-            // Continue with other files even if one fails
+            return {
+              success: false,
+              filename: fileData.file.name,
+              error: fileError instanceof Error ? fileError.message : 'Unknown error'
+            };
           }
+        });
+
+        // Wait for all uploads to complete
+        const uploadResults = await Promise.allSettled(uploadPromises);
+
+        // Separate successful and failed uploads
+        const successfulUploads = uploadResults
+          .filter(result => result.status === 'fulfilled' && result.value.success)
+          .map(result => (result as PromiseFulfilledResult<any>).value);
+
+        const failedUploads = uploadResults
+          .filter(result => result.status === 'rejected' ||
+            (result.status === 'fulfilled' && !result.value.success))
+          .map(result => {
+            if (result.status === 'rejected') {
+              return 'Unknown file (Promise rejected)';
+            }
+            return result.value.filename;
+          });
+
+        // Batch insert file metadata for successful uploads
+        if (successfulUploads.length > 0) {
+          const batchOperations = successfulUploads.map(upload => ({
+            query: `
+              INSERT INTO files (
+                application_id, filename, original_name, file_path, size,
+                mime_type, type, description, upload_date
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            params: [
+              upload.metadata.application_id,
+              upload.metadata.filename,
+              upload.metadata.original_name,
+              upload.metadata.file_path,
+              upload.metadata.size,
+              upload.metadata.mime_type,
+              upload.metadata.type,
+              upload.metadata.description,
+              upload.metadata.upload_date
+            ]
+          }));
+
+          await window.electronAPI.batchExecute(batchOperations);
+        }
+
+        if (failedUploads.length > 0) {
+          console.error('Some files failed to upload:', failedUploads);
+          setError(`Einige Dateien konnten nicht hochgeladen werden: ${failedUploads.join(', ')}`);
         }
       } else if (files && !applicationId) {
-        console.error('Cannot upload files: applicationId is missing!', { applicationId, hasFiles: !!files });
+        console.error('Cannot upload files: applicationId is missing!');
         setError('Fehler: Bewerbung wurde nicht korrekt erstellt. Dateien können nicht hochgeladen werden.');
       }
-      
+
       setSuccess('Bewerbung erfolgreich erstellt!');
-      
-      // Reset form after successful submission
-      setTimeout(() => {
+
+      // Navigate back after successful submission - give user time to see success message
+      const navigateTimer = setTimeout(() => {
         if (onNavigate) {
           onNavigate('applications', { message: 'Bewerbung erfolgreich erstellt!' });
+        } else {
+          console.error('onNavigate function is not available!');
+          // Fallback: try to navigate using window.location or other methods
+          console.log('Attempting fallback navigation...');
+          // You might need to implement a fallback navigation method here
         }
-      }, 2000);
+      }, 50);
+
+      // Store the timer so we can clear it if needed
+      (window as any).navigationTimer = navigateTimer;
 
     } catch (error) {
+      console.error('Error during submission:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Ein unbekannter Fehler ist aufgetreten'
       );
     } finally {
+      console.log('Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -212,12 +266,25 @@ export const NewApplication: React.FC<NewApplicationProps> = ({ onNavigate }) =>
                 />
               </svg>
             </div>
-            <div className="ml-3">
+            <div className="ml-3 flex-1">
               <h3 className="text-sm font-medium text-green-800">
                 Erfolg!
               </h3>
               <div className="mt-2 text-sm text-green-700">
                 <p>{success}</p>
+              </div>
+              <div className="mt-3">
+                <button
+                  onClick={() => {
+                    console.log('Manual navigation triggered');
+                    if (onNavigate) {
+                      onNavigate('applications', { message: 'Bewerbung erfolgreich erstellt!' });
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                >
+                  Zurück zu Bewerbungen
+                </button>
               </div>
             </div>
           </div>
