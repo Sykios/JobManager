@@ -58,26 +58,88 @@ export class SyncService {
 
     // Add request interceptor for authentication
     this.httpClient.interceptors.request.use(async (config) => {
-      const authService = getAuthService();
-      if (authService) {
-        try {
-          const accessToken = await authService.getAccessToken();
-          console.log('HTTP interceptor: Access token obtained:', accessToken ? 'Yes' : 'No');
-          
-          if (accessToken) {
-            config.headers['Authorization'] = `Bearer ${accessToken}`;
-            console.log('HTTP interceptor: Authorization header set');
-          } else {
-            console.warn('HTTP interceptor: No access token available');
-          }
-        } catch (error) {
-          console.error('HTTP interceptor: Error getting access token:', error);
-        }
-      } else {
-        console.warn('HTTP interceptor: Auth service not available');
-      }
+      console.log('HTTP interceptor: Starting request to:', config.url);
       
-      return config;
+      const authService = getAuthService();
+      if (!authService) {
+        console.warn('HTTP interceptor: Auth service not available');
+        throw new Error('Authentication service not available');
+      }
+
+      try {
+        // Always get a fresh session first
+        const { data: { session }, error } = await (authService as any).supabase.auth.getSession();
+        
+        if (error || !session) {
+          console.error('HTTP interceptor: No valid session available:', error?.message || 'No session');
+          throw new Error('No valid authentication session');
+        }
+        
+        // Check if token is expired or about to expire
+        const now = Math.floor(Date.now() / 1000);
+        const bufferTime = 300; // 5 minutes buffer
+        
+        let accessToken = session.access_token;
+        
+        if (session.expires_at && session.expires_at - bufferTime <= now) {
+          console.log('HTTP interceptor: Token expired or expiring soon, refreshing...');
+          
+          const { session: refreshedSession, error: refreshError } = await authService.refreshSession();
+          
+          if (refreshedSession && !refreshError) {
+            accessToken = refreshedSession.access_token;
+            console.log('HTTP interceptor: Token refreshed successfully');
+          } else {
+            console.error('HTTP interceptor: Token refresh failed:', refreshError?.message);
+            throw new Error('Token refresh failed');
+          }
+        }
+        
+        if (!accessToken) {
+          console.error('HTTP interceptor: No access token available after checks');
+          throw new Error('No access token available');
+        }
+        
+        // Set the authorization header
+        const authHeader = `Bearer ${accessToken}`;
+        
+        if (!config.headers) {
+          config.headers = {} as any;
+        }
+        
+        config.headers['Authorization'] = authHeader;
+        
+        console.log('HTTP interceptor: Authorization header set successfully');
+        console.log('HTTP interceptor: Token preview:', accessToken.substring(0, 20) + '...');
+        
+        // Validate token format
+        const tokenParts = accessToken.split('.');
+        if (tokenParts.length !== 3) {
+          console.error('HTTP interceptor: Invalid JWT format');
+          throw new Error('Invalid JWT token format');
+        }
+        
+        // Check token expiration
+        try {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          if (payload.exp < Math.floor(Date.now() / 1000)) {
+            console.error('HTTP interceptor: Token is expired');
+            throw new Error('Token is expired');
+          }
+          console.log('HTTP interceptor: Token is valid, expires at:', new Date(payload.exp * 1000).toISOString());
+        } catch (e) {
+          console.warn('HTTP interceptor: Could not validate token expiration:', e);
+        }
+        
+        return config;
+      } catch (error) {
+        console.error('HTTP interceptor: Authentication failed:', error);
+        // Instead of silently continuing, throw the error to fail the request properly
+        throw error;
+      }
+    }, (error) => {
+      console.error('HTTP interceptor: Request interceptor error:', error);
+      return Promise.reject(error);
     });
 
     // Add response interceptor for error handling
@@ -85,12 +147,15 @@ export class SyncService {
       (response) => response,
       async (error) => {
         // Handle token expiration
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !error.config._retry) {
           const authService = getAuthService();
           if (authService) {
             console.log('Access token expired, attempting refresh...');
             const { session, error: refreshError } = await authService.refreshSession();
             if (session && !refreshError) {
+              // Mark this request as a retry to prevent infinite loops
+              error.config._retry = true;
+              
               // Retry the original request with new token
               const originalRequest = error.config;
               originalRequest.headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -132,6 +197,30 @@ export class SyncService {
       this.config.enableSync = false;
       await this.saveSyncSetting('enable_sync', false);
       await this.saveSyncSetting('sync_available', false);
+      
+      // Set up auth listener to enable sync when user logs in
+      authService.onAuthStateChange(async (session) => {
+        if (session) {
+          console.log('User authenticated, enabling sync...');
+          this.config.enableSync = true;
+          await this.saveSyncSetting('enable_sync', true);
+          
+          // Test connection and perform initial sync
+          try {
+            await this.testConnection();
+            await this.performFullSync();
+            console.log('Post-authentication sync completed');
+          } catch (error) {
+            console.warn('Post-authentication sync failed:', error);
+          }
+        } else {
+          console.log('User signed out, disabling sync...');
+          this.config.enableSync = false;
+          await this.saveSyncSetting('enable_sync', false);
+          await this.saveSyncSetting('sync_available', false);
+        }
+      });
+      
       return;
     }
 
@@ -183,7 +272,32 @@ export class SyncService {
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing connection to sync API...');
-      const response = await this.httpClient.get('/api/synchronizeJobManager/health');
+      
+      // Explicitly get auth token and set headers for this request
+      const authService = getAuthService();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'JobManager-Electron/1.0.0',
+      };
+      
+      if (authService) {
+        const accessToken = await authService.getAccessToken();
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+          console.log('Test connection: Auth header set:', `Bearer ${accessToken.substring(0, 20)}...`);
+        } else {
+          console.warn('Test connection: No access token available');
+        }
+      } else {
+        console.warn('Test connection: Auth service not available');
+      }
+      
+      console.log('Test connection: Making request with headers:', Object.keys(headers));
+      
+      const response = await this.httpClient.get('/api/synchronizeJobManager/health', {
+        headers: headers
+      });
+      
       console.log('Connection test successful:', response.status, response.data);
       await this.saveSyncSetting('sync_available', true);
       return response.status === 200;
@@ -388,7 +502,7 @@ export class SyncService {
   }
 
   /**
-   * Pull remote changes from cloud
+   * Get changes since last sync for each table
    */
   private async pullRemoteChanges(result: SyncResult): Promise<void> {
     const lastSyncTime = await this.getSyncSetting('last_sync_time', '1970-01-01T00:00:00Z');
@@ -398,8 +512,23 @@ export class SyncService {
       const tables = ['applications', 'companies', 'contacts', 'reminders'];
       
       for (const table of tables) {
+        console.log(`Pulling remote changes for table: ${table}`);
+        
+        // Ensure authentication header is set for this specific request
+        const authService = getAuthService();
+        const headers: Record<string, string> = {};
+        
+        if (authService) {
+          const accessToken = await authService.getAccessToken();
+          if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+            console.log(`Direct auth header set for ${table} request:`, `Bearer ${accessToken.substring(0, 20)}...`);
+          }
+        }
+        
         const response = await this.httpClient.get(`/api/synchronizeJobManager/${table}`, {
-          params: { since: lastSyncTime }
+          params: { since: lastSyncTime },
+          headers: headers // Explicitly set headers on this request
         });
 
         if (response.data && response.data.length > 0) {
@@ -424,6 +553,27 @@ export class SyncService {
   private async pushSyncItem(item: SyncQueueItem): Promise<void> {
     const endpoint = `/api/synchronizeJobManager/${item.table_name}`;
     
+    // Explicitly get auth token and set headers for this request
+    const authService = getAuthService();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'JobManager-Electron/1.0.0',
+    };
+    
+    if (authService) {
+      const accessToken = await authService.getAccessToken();
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        console.log(`Push ${item.operation}: Auth header set for ${item.table_name}:`, `Bearer ${accessToken.substring(0, 20)}...`);
+      } else {
+        console.warn(`Push ${item.operation}: No access token available for ${item.table_name}`);
+      }
+    } else {
+      console.warn(`Push ${item.operation}: Auth service not available for ${item.table_name}`);
+    }
+    
+    const requestConfig = { headers: headers };
+    
     switch (item.operation) {
       case 'create':
       case 'update':
@@ -436,14 +586,14 @@ export class SyncService {
         };
         
         if (item.operation === 'create') {
-          await this.httpClient.post(endpoint, payload);
+          await this.httpClient.post(endpoint, payload, requestConfig);
         } else {
-          await this.httpClient.put(`${endpoint}/${item.record_id}`, payload);
+          await this.httpClient.put(`${endpoint}/${item.record_id}`, payload, requestConfig);
         }
         break;
 
       case 'delete':
-        await this.httpClient.delete(`${endpoint}/${item.record_id}`);
+        await this.httpClient.delete(`${endpoint}/${item.record_id}`, requestConfig);
         break;
     }
   }

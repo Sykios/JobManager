@@ -325,18 +325,25 @@ export class AuthService {
    */
   async getAccessToken(): Promise<string | null> {
     try {
+      console.log('AuthService.getAccessToken: Starting token retrieval...');
       const { data: { session }, error } = await this.supabase.auth.getSession();
       if (error) {
-        console.warn('Error getting access token:', error);
+        console.warn('AuthService.getAccessToken: Error getting session:', error);
         return null;
       }
       // Update cached session
       this.currentSession = session;
       const token = session?.access_token || null;
-      console.log('Access token retrieved:', token ? `${token.substring(0, 20)}...` : 'null');
+      console.log('AuthService.getAccessToken: Token retrieved:', token ? `${token.substring(0, 20)}...` : 'null');
+      console.log('AuthService.getAccessToken: Session exists:', !!session);
+      console.log('AuthService.getAccessToken: User exists:', !!session?.user);
+      if (session?.user) {
+        console.log('AuthService.getAccessToken: User email:', session.user.email);
+        console.log('AuthService.getAccessToken: Token expiry:', session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'No expiry');
+      }
       return token;
     } catch (error) {
-      console.error('Exception getting access token:', error);
+      console.error('AuthService.getAccessToken: Exception getting access token:', error);
       return null;
     }
   }
