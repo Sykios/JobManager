@@ -8,7 +8,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
-  const { user, isOfflineMode } = useAuth();
+  const { user, isOfflineMode, updateAvailable } = useAuth();
   
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
@@ -65,10 +65,15 @@ export const Header: React.FC<HeaderProps> = ({ onNavigate }) => {
           
           {/* User Profile Area - Clickable to go to settings */}
           <div 
-            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+            className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
             onClick={() => onNavigate?.('settings')}
             title="Profil & Einstellungen"
           >
+            {updateAvailable && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+            )}
             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
               isOfflineMode 
                 ? 'bg-gradient-to-br from-orange-500 to-orange-600' 

@@ -20,6 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isOfflineMode: boolean;
+  updateAvailable: boolean;
   signUp: (email: string, password: string) => Promise<{
     user: User | null;
     session: Session | null;
@@ -40,6 +41,7 @@ interface AuthContextType {
   }>;
   enableOfflineMode: () => void;
   exitOfflineMode: () => void;
+  checkForUpdates: () => Promise<void>;
   // Add development bypass function
   setDevBypass: (user: User, session: Session) => void;
   // Add refresh auth state function
@@ -65,6 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   useEffect(() => {
     // Initialize auth state
@@ -131,6 +134,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('✅ Session restored successfully for user:', currentSession.user?.email);
         setSession(currentSession);
         setUser(currentSession.user);
+        // Check for updates after session restore
+        await checkForUpdates();
       } else {
         console.log('❌ No valid session found - user needs to login again');
       }
@@ -148,6 +153,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result.session && result.user) {
         setSession(result.session);
         setUser(result.user);
+        // Check for updates after successful sign up
+        await checkForUpdates();
       }
       
       return result;
@@ -168,6 +175,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result.session && result.user) {
         setSession(result.session);
         setUser(result.user);
+        // Check for updates after successful sign in
+        await checkForUpdates();
       }
       
       return result;
@@ -200,6 +209,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear local state regardless of API result
       setSession(null);
       setUser(null);
+      setUpdateAvailable(false);
       
       return result;
     } catch (error) {
@@ -208,6 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(null);
       setUser(null);
       setIsOfflineMode(false);
+      setUpdateAvailable(false);
       
       // Clear development bypass even on error
       if (process.env.NODE_ENV === 'development') {
@@ -237,12 +248,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.warn('Failed to notify main process about offline mode:', error);
     }
+
+    // Check for updates
+    await checkForUpdates();
   };
 
   const exitOfflineMode = async () => {
     console.log('🌐 Exiting offline mode');
     setIsOfflineMode(false);
     localStorage.removeItem('jobmanager_offline_mode');
+    setUpdateAvailable(false);
     
     // Notify main process
     try {
@@ -292,6 +307,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('jobmanager_keep_logged_in', 'true');
   };
 
+  const checkForUpdates = async () => {
+    try {
+      const result = await (window as any).electronAPI?.updater?.checkForUpdates();
+      if (result?.success && result?.updateInfo) {
+        setUpdateAvailable(true);
+      } else {
+        setUpdateAvailable(false);
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      setUpdateAvailable(false);
+    }
+  };
+
   // Refresh auth state from main process
   const refreshAuthState = async () => {
     try {
@@ -314,6 +343,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     isAuthenticated: !!user,
     isOfflineMode,
+    updateAvailable,
     signUp,
     signIn,
     signOut,
@@ -322,6 +352,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updatePassword,
     enableOfflineMode,
     exitOfflineMode,
+    checkForUpdates,
     setDevBypass,
     refreshAuthState,
   };
