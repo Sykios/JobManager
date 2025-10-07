@@ -96,10 +96,6 @@ export const FileServiceProvider: React.FC<FileServiceProviderProps> = ({ childr
 
     // Upload a new file
     async uploadFile(file: File, applicationId?: number, description?: string): Promise<FileModel> {
-      // Convert File to ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
       // Get file extension and determine type
       const extension = file.name.split('.').pop()?.toLowerCase() || '';
       const type = getFileTypeFromExtension(extension);
@@ -107,25 +103,40 @@ export const FileServiceProvider: React.FC<FileServiceProviderProps> = ({ childr
       // Determine MIME type
       const mimeType = file.type || getMimeTypeFromExtension(extension);
       
-      const now = new Date().toISOString();
+      // Convert File to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
       
+      // Upload file using the main process API
+      const uploadResult = await window.electronAPI.uploadFile({
+        data: arrayBuffer,
+        filename: file.name,
+        applicationId: applicationId || 0, // Use 0 for no application (will be treated as null)
+        fileType: type,
+        description: description
+      });
+      
+      if (!uploadResult.success) {
+        throw new Error('File upload failed');
+      }
+      
+      // Insert metadata into database
+      const now = new Date().toISOString();
       const query = `
         INSERT INTO files (
           filename, original_name, file_path, size, mime_type, type,
-          description, application_id, data, upload_date, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          description, application_id, upload_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
-        file.name,
-        file.name,
-        null, // file_path not used when storing in database
-        file.size,
+        uploadResult.filename, // unique filename
+        uploadResult.originalName, // original filename
+        uploadResult.filePath, // path on disk
+        uploadResult.size,
         mimeType,
         type,
         description || null,
         applicationId || null,
-        Array.from(uint8Array), // Convert to regular array for SQLite
         now,
         now,
         now
@@ -135,7 +146,7 @@ export const FileServiceProvider: React.FC<FileServiceProviderProps> = ({ childr
       const createdFile = await fileService.getById(result.lastInsertRowid);
       
       if (!createdFile) {
-        throw new Error('Failed to create file');
+        throw new Error('Failed to create file record');
       }
       
       return createdFile;
@@ -143,23 +154,49 @@ export const FileServiceProvider: React.FC<FileServiceProviderProps> = ({ childr
 
     // Delete file
     async deleteFile(id: number): Promise<void> {
+      // First get the file to get the file_path
+      const file = await fileService.getById(id);
+      if (!file) return;
+      
+      // Delete from database
       await executeQuery('DELETE FROM files WHERE id = ?', [id]);
+      
+      // Delete file from disk
+      if (file.file_path) {
+        try {
+          await window.electronAPI.deleteFile(file.file_path);
+        } catch (error) {
+          console.warn('Failed to delete file from disk:', error);
+        }
+      }
     },
 
     // Download file (get file buffer)
     async downloadFile(id: number): Promise<{ buffer: ArrayBuffer; filename: string; mimeType: string }> {
-      const result = await queryDatabase('SELECT data, filename, mime_type FROM files WHERE id = ?', [id]);
+      const result = await queryDatabase('SELECT data, file_path, original_name, filename, mime_type FROM files WHERE id = ?', [id]);
       
       if (result.length === 0) {
         throw new Error('File not found');
       }
       
-      const { data, filename, mime_type } = result[0];
-      const uint8Array = new Uint8Array(data);
+      const { data, file_path, original_name, filename, mime_type } = result[0];
+      let buffer: ArrayBuffer;
+      
+      if (data) {
+        // File stored in database (legacy)
+        const uint8Array = new Uint8Array(data);
+        buffer = uint8Array.buffer;
+      } else if (file_path) {
+        // File stored on disk
+        const fileBuffer = await window.electronAPI.readFile(file_path);
+        buffer = new Uint8Array(fileBuffer).buffer;
+      } else {
+        throw new Error('File data not found');
+      }
       
       return {
-        buffer: uint8Array.buffer,
-        filename,
+        buffer,
+        filename: original_name || filename,
         mimeType: mime_type
       };
     },
