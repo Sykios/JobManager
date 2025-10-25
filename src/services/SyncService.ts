@@ -25,15 +25,6 @@ export interface SyncError {
   retryable: boolean;
 }
 
-export interface CloudRecord {
-  id: string;
-  local_id?: number;
-  data: any;
-  created_at: string;
-  updated_at: string;
-  deleted_at?: string;
-}
-
 export class SyncService {
   private db: Database<sqlite3.Database, sqlite3.Statement>;
   private config: SyncConfig;
