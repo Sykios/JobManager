@@ -1,7 +1,6 @@
 import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
-import { v4 as uuidv4 } from 'uuid';
-import { SyncQueueItem, UserSetting, Reminder, Application, Company, Contact } from '../types';
+import { SyncQueueItem, UserSetting } from '../types';
 import { getAuthService } from './AuthService';
 import { SupabaseDataService } from './SupabaseDataService';
 import { SupabaseClient } from '@supabase/supabase-js';

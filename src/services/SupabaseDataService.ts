@@ -1,7 +1,6 @@
 import { SupabaseClient, RealtimeChannel, REALTIME_LISTEN_TYPES, REALTIME_POSTGRES_CHANGES_LISTEN_EVENT } from '@supabase/supabase-js';
 import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
-import { Application, Company, Contact, Reminder, SyncStatus } from '../types';
 import { getAuthService } from './AuthService';
 
 export interface SupabaseDataConfig {
@@ -266,7 +265,7 @@ export class SupabaseDataService {
    * Push a single sync item to Supabase
    */
   private async pushSyncItem(item: any): Promise<void> {
-    const { table_name, record_id, operation, data } = item;
+    const { table_name, record_id, operation } = item;
     
     // Get local record
     const localRecord = await this.db.get(
