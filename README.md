@@ -156,8 +156,9 @@ npm install
 
 # Environment Variables einrichten (erforderlich für Cloud-Sync)
 # .env Datei mit Supabase Credentials erstellen
-echo "SUPABASE_URL=https://your-project.supabase.co" > .env
-echo "SUPABASE_ANON_KEY=your-anon-key" >> .env
+# WICHTIG: Ersetze die Platzhalter mit deinen echten Supabase Credentials!
+echo "SUPABASE_URL=https://your-project.supabase.co" > .env  # Ersetze mit deiner Project URL
+echo "SUPABASE_ANON_KEY=your-anon-key" >> .env  # Ersetze mit deinem anon public key
 echo "ENABLE_SYNC=true" >> .env
 
 # Supabase Datenbank einrichten (siehe docs/SUPABASE_SETUP.md)

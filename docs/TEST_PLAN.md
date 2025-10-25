@@ -287,7 +287,20 @@ Dieser Testplan beschreibt, wie die neue direkte Supabase-Integration getestet w
 **Ziel**: Sync funktioniert auch mit vielen Datensätzen
 
 **Setup**:
-- 100+ Bewerbungen in Supabase (z.B. via Seed-Skript)
+- 100+ Bewerbungen in Supabase erstellen
+- Option 1: Manuell über Supabase Table Editor mehrere Datensätze erstellen
+- Option 2: SQL Insert-Statements im SQL Editor ausführen:
+  ```sql
+  INSERT INTO public.applications (user_id, data)
+  SELECT 
+    auth.uid(),
+    jsonb_build_object(
+      'title', 'Test Application ' || i,
+      'position', 'Software Engineer',
+      'status', 'applied'
+    )
+  FROM generate_series(1, 100) AS i;
+  ```
 
 **Schritte**:
 1. Fresh Install auf neuem Gerät
@@ -364,18 +377,32 @@ SELECT id, supabase_id, sync_status FROM applications;
 
 ### Issue: Magic Link öffnet Browser statt App
 **Workaround**: 
-- Überprüfe, ob Custom URL Scheme registriert ist
-- Windows: Registry-Eintrag prüfen
-- macOS: LSHandlers in Info.plist prüfen
+Überprüfe, ob Custom URL Scheme registriert ist:
+
+**Windows**:
+- Registry-Eintrag überprüfen unter: `HKEY_CURRENT_USER\Software\Classes\jobmanager`
+- Oder per PowerShell: `Get-ItemProperty -Path "HKCU:\Software\Classes\jobmanager\shell\open\command"`
+- Falls nicht vorhanden: App einmal als Administrator starten
+
+**macOS**:
+- Info.plist überprüfen (in gebauter App unter `JobManager.app/Contents/Info.plist`)
+- Sollte `CFBundleURLSchemes` mit Eintrag `jobmanager` enthalten
+- Default handler setzen: `defaults write com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers -array-add '{LSHandlerURLScheme=jobmanager;LSHandlerRoleAll=com.sykios.jobmanager;}'`
+
+**Linux**:
+- Desktop-Datei prüfen unter `~/.local/share/applications/jobmanager.desktop`
+- Sollte `MimeType=x-scheme-handler/jobmanager` enthalten
 
 ### Issue: Realtime Updates nicht empfangen
 **Workaround**:
 - Supabase Dashboard > Settings > API: Realtime aktiviert?
 - Firewall blockiert WebSocket-Verbindungen?
 - Browser/Electron DevTools: WebSocket-Verbindung prüfen
+- Network Tab: Suche nach WebSocket-Verbindungen zu `wss://your-project.supabase.co/realtime/v1/websocket`
 
 ### Issue: Sync schlägt fehl mit "403 Forbidden"
 **Workaround**:
-- RLS Policies korrekt eingerichtet?
-- User authentifiziert?
+- RLS Policies korrekt eingerichtet? (`docs/supabase-schema.sql` komplett ausgeführt?)
+- User authentifiziert? (Session in DevTools Console prüfen: `localStorage`)
 - Token abgelaufen? (automatischer Refresh sollte funktionieren)
+- Supabase Dashboard > Authentication > Logs: Auth-Fehler prüfen
