@@ -1,13 +1,14 @@
-import axios, { AxiosInstance } from 'axios';
 import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { SyncQueueItem, UserSetting, Reminder, Application, Company, Contact } from '../types';
 import { getAuthService } from './AuthService';
+import { SupabaseDataService } from './SupabaseDataService';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface SyncConfig {
-  apiBaseUrl: string;
   enableSync: boolean;
+  supabaseClient?: SupabaseClient;
 }
 
 export interface SyncResult {
@@ -37,7 +38,7 @@ export interface CloudRecord {
 export class SyncService {
   private db: Database<sqlite3.Database, sqlite3.Statement>;
   private config: SyncConfig;
-  private httpClient: AxiosInstance;
+  private supabaseDataService: SupabaseDataService | null = null;
   private syncInProgress = false;
 
   constructor(
@@ -47,139 +48,21 @@ export class SyncService {
     this.db = db;
     this.config = config;
     
-    this.httpClient = axios.create({
-      baseURL: config.apiBaseUrl,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'JobManager-Electron/1.0.0',
-      },
-    });
-
-    // Add request interceptor for authentication
-    this.httpClient.interceptors.request.use(async (config) => {
-      console.log('HTTP interceptor: Starting request to:', config.url);
-      
-      const authService = getAuthService();
-      if (!authService) {
-        console.warn('HTTP interceptor: Auth service not available');
-        throw new Error('Authentication service not available');
-      }
-
-      try {
-        // Always get a fresh session first
-        const { data: { session }, error } = await (authService as any).supabase.auth.getSession();
-        
-        if (error || !session) {
-          console.error('HTTP interceptor: No valid session available:', error?.message || 'No session');
-          throw new Error('No valid authentication session');
-        }
-        
-        // Check if token is expired or about to expire
-        const now = Math.floor(Date.now() / 1000);
-        const bufferTime = 300; // 5 minutes buffer
-        
-        let accessToken = session.access_token;
-        
-        if (session.expires_at && session.expires_at - bufferTime <= now) {
-          console.log('HTTP interceptor: Token expired or expiring soon, refreshing...');
-          
-          const { session: refreshedSession, error: refreshError } = await authService.refreshSession();
-          
-          if (refreshedSession && !refreshError) {
-            accessToken = refreshedSession.access_token;
-            console.log('HTTP interceptor: Token refreshed successfully');
-          } else {
-            console.error('HTTP interceptor: Token refresh failed:', refreshError?.message);
-            throw new Error('Token refresh failed');
-          }
-        }
-        
-        if (!accessToken) {
-          console.error('HTTP interceptor: No access token available after checks');
-          throw new Error('No access token available');
-        }
-        
-        // Set the authorization header
-        const authHeader = `Bearer ${accessToken}`;
-        
-        if (!config.headers) {
-          config.headers = {} as any;
-        }
-        
-        config.headers['Authorization'] = authHeader;
-        
-        console.log('HTTP interceptor: Authorization header set successfully');
-        console.log('HTTP interceptor: Token preview:', accessToken.substring(0, 20) + '...');
-        
-        // Validate token format
-        const tokenParts = accessToken.split('.');
-        if (tokenParts.length !== 3) {
-          console.error('HTTP interceptor: Invalid JWT format');
-          throw new Error('Invalid JWT token format');
-        }
-        
-        // Check token expiration
-        try {
-          const payload = JSON.parse(atob(tokenParts[1]));
-          if (payload.exp < Math.floor(Date.now() / 1000)) {
-            console.error('HTTP interceptor: Token is expired');
-            throw new Error('Token is expired');
-          }
-          console.log('HTTP interceptor: Token is valid, expires at:', new Date(payload.exp * 1000).toISOString());
-        } catch (e) {
-          console.warn('HTTP interceptor: Could not validate token expiration:', e);
-        }
-        
-        return config;
-      } catch (error) {
-        console.error('HTTP interceptor: Authentication failed:', error);
-        // Instead of silently continuing, throw the error to fail the request properly
-        throw error;
-      }
-    }, (error) => {
-      console.error('HTTP interceptor: Request interceptor error:', error);
-      return Promise.reject(error);
-    });
-
-    // Add response interceptor for error handling
-    this.httpClient.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        // Handle token expiration
-        if (error.response?.status === 401 && !error.config._retry) {
-          const authService = getAuthService();
-          if (authService) {
-            console.log('Access token expired, attempting refresh...');
-            const { session, error: refreshError } = await authService.refreshSession();
-            if (session && !refreshError) {
-              // Mark this request as a retry to prevent infinite loops
-              error.config._retry = true;
-              
-              // Retry the original request with new token
-              const originalRequest = error.config;
-              originalRequest.headers['Authorization'] = `Bearer ${session.access_token}`;
-              return this.httpClient.request(originalRequest);
-            } else {
-              console.error('Token refresh failed:', refreshError);
-              // Could emit event to show login dialog
-            }
-          }
-        }
-        
-        console.error('Sync API Error:', error.response?.data || error.message);
-        return Promise.reject(error);
-      }
-    );
+    // Initialize Supabase data service if client is provided
+    if (config.supabaseClient) {
+      this.supabaseDataService = new SupabaseDataService(db, {
+        supabaseClient: config.supabaseClient,
+      });
+    }
   }
 
   /**
    * Initialize sync service and perform startup sync if enabled
    */
   async initialize(): Promise<void> {
-    console.log('Initializing SyncService...');
+    console.log('🔄 Initializing SyncService with Supabase...');
     
-    // Check if user is authenticated (using fresh Supabase check)
+    // Check if user is authenticated
     const authService = getAuthService();
     if (!authService) {
       console.log('Auth service not available, sync disabled');
@@ -201,15 +84,30 @@ export class SyncService {
       // Set up auth listener to enable sync when user logs in
       authService.onAuthStateChange(async (session) => {
         if (session) {
-          console.log('User authenticated, enabling sync...');
+          console.log('✅ User authenticated, enabling sync...');
           this.config.enableSync = true;
           await this.saveSyncSetting('enable_sync', true);
+          
+          // Initialize Supabase data service
+          if (this.config.supabaseClient && !this.supabaseDataService) {
+            this.supabaseDataService = new SupabaseDataService(this.db, {
+              supabaseClient: this.config.supabaseClient,
+            });
+          }
           
           // Test connection and perform initial sync
           try {
             await this.testConnection();
+            
+            // Initialize realtime subscriptions
+            if (this.supabaseDataService) {
+              await this.supabaseDataService.initializeRealtime((table, event, record) => {
+                console.log(`📡 Realtime update: ${table}.${event}`, record);
+              });
+            }
+            
             await this.performFullSync();
-            console.log('Post-authentication sync completed');
+            console.log('✅ Post-authentication sync completed');
           } catch (error) {
             console.warn('Post-authentication sync failed:', error);
           }
@@ -218,6 +116,11 @@ export class SyncService {
           this.config.enableSync = false;
           await this.saveSyncSetting('enable_sync', false);
           await this.saveSyncSetting('sync_available', false);
+          
+          // Cleanup realtime subscriptions
+          if (this.supabaseDataService) {
+            await this.supabaseDataService.cleanup();
+          }
         }
       });
       
@@ -225,40 +128,44 @@ export class SyncService {
     }
 
     // If user is authenticated, enable sync by default
-    console.log('User authenticated, enabling sync...');
+    console.log('✅ User authenticated, enabling sync...');
     this.config.enableSync = true;
     await this.saveSyncSetting('enable_sync', true);
 
-    // Load other sync settings from database (but keep enableSync as true)
+    // Load other sync settings from database
     const lastSyncTime = await this.getSyncSetting('last_sync_time', null);
     console.log('Last sync time:', lastSyncTime);
 
-    // Test connection to Vercel API
+    // Test connection to Supabase
     if (this.config.enableSync) {
-      console.log('Sync enabled, testing connection to API:', this.config.apiBaseUrl);
+      console.log('Sync enabled, testing connection to Supabase...');
       try {
         await this.testConnection();
-        console.log('Successfully connected to sync API');
+        console.log('✅ Successfully connected to Supabase');
         
-        // Perform startup sync only if connection is successful
+        // Initialize realtime subscriptions
+        if (this.supabaseDataService) {
+          await this.supabaseDataService.initializeRealtime((table, event, record) => {
+            console.log(`📡 Realtime update: ${table}.${event}`, record);
+          });
+        }
+        
+        // Perform startup sync
         console.log('Performing startup sync...');
         try {
           await this.performFullSync();
-          console.log('Startup sync completed successfully');
+          console.log('✅ Startup sync completed successfully');
         } catch (error) {
           console.warn('Startup sync failed, continuing without sync:', error);
-          // Mark sync as unavailable but don't fail initialization
           await this.saveSyncSetting('sync_available', false);
         }
       } catch (error) {
-        console.error('Could not connect to sync API, running in offline mode:', {
-          apiUrl: this.config.apiBaseUrl,
+        console.error('Could not connect to Supabase, running in offline mode:', {
           error: error instanceof Error ? error.message : 'Unknown error',
           enableSync: this.config.enableSync
         });
-        // Mark sync as unavailable and continue
         await this.saveSyncSetting('sync_available', false);
-        this.config.enableSync = false; // Disable sync for this session
+        this.config.enableSync = false;
       }
     } else {
       console.log('Sync disabled, running in offline mode');
@@ -267,51 +174,28 @@ export class SyncService {
   }
 
   /**
-   * Test connection to the Vercel API
+   * Test connection to Supabase
    */
   async testConnection(): Promise<boolean> {
     try {
-      console.log('Testing connection to sync API...');
+      console.log('Testing connection to Supabase...');
       
-      // Explicitly get auth token and set headers for this request
-      const authService = getAuthService();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'JobManager-Electron/1.0.0',
-      };
-      
-      if (authService) {
-        const accessToken = await authService.getAccessToken();
-        if (accessToken) {
-          headers['Authorization'] = `Bearer ${accessToken}`;
-          console.log('Test connection: Auth header set:', `Bearer ${accessToken.substring(0, 20)}...`);
-        } else {
-          console.warn('Test connection: No access token available');
-        }
-      } else {
-        console.warn('Test connection: Auth service not available');
+      if (!this.supabaseDataService) {
+        throw new Error('Supabase data service not initialized');
       }
+
+      const result = await this.supabaseDataService.testConnection();
       
-      console.log('Test connection: Making request with headers:', Object.keys(headers));
-      
-      const response = await this.httpClient.get('/api/synchronizeJobManager/health', {
-        headers: headers
-      });
-      
-      console.log('Connection test successful:', response.status, response.data);
-      await this.saveSyncSetting('sync_available', true);
-      return response.status === 200;
+      if (result) {
+        console.log('✅ Connection test successful');
+        await this.saveSyncSetting('sync_available', true);
+        return true;
+      } else {
+        throw new Error('Connection test returned false');
+      }
     } catch (error) {
-      console.error('Connection test failed:', {
+      console.error('❌ Connection test failed:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        status: axios.isAxiosError(error) ? error.response?.status : 'No status',
-        data: axios.isAxiosError(error) ? error.response?.data : 'No data',
-        config: axios.isAxiosError(error) ? {
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
-          timeout: error.config?.timeout,
-          headers: error.config?.headers ? Object.keys(error.config.headers) : 'No headers'
-        } : 'No config'
       });
       await this.saveSyncSetting('sync_available', false);
       throw new Error(`Connection test failed: ${error}`);
@@ -474,213 +358,55 @@ export class SyncService {
   }
 
   /**
-   * Push local changes to cloud
+   * Push local changes to Supabase
    */
   private async pushLocalChanges(result: SyncResult): Promise<void> {
+    if (!this.supabaseDataService) {
+      throw new Error('Supabase data service not initialized');
+    }
+
     const queueItems = await this.getPendingSyncItems();
     
+    if (queueItems.length === 0) {
+      console.log('No pending changes to push');
+      return;
+    }
+
+    console.log(`Pushing ${queueItems.length} local changes to Supabase...`);
+    
+    const errors = await this.supabaseDataService.pushLocalChanges(queueItems);
+    
+    // Mark successfully synced items
     for (const item of queueItems) {
-      try {
-        await this.pushSyncItem(item);
-        result.syncedTables = Array.from(new Set([...result.syncedTables, item.table_name]));
-        
-        // Mark as synced
+      const hasError = errors.find(e => e.recordId === item.record_id && e.table === item.table_name);
+      
+      if (!hasError) {
         await this.markSyncItemProcessed(item.id);
-      } catch (error) {
-        const syncError: SyncError = {
-          table: item.table_name,
-          recordId: item.record_id,
-          operation: item.operation,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          retryable: this.isRetryableError(error),
-        };
-        
-        result.errors.push(syncError);
-        await this.updateSyncItemError(item.id, syncError.error);
+        result.syncedTables = Array.from(new Set([...result.syncedTables, item.table_name]));
+      } else {
+        await this.updateSyncItemError(item.id, hasError.error);
       }
     }
+    
+    result.errors.push(...errors);
   }
 
   /**
-   * Get changes since last sync for each table
+   * Pull remote changes from Supabase
    */
   private async pullRemoteChanges(result: SyncResult): Promise<void> {
+    if (!this.supabaseDataService) {
+      throw new Error('Supabase data service not initialized');
+    }
+
     const lastSyncTime = await this.getSyncSetting('last_sync_time', '1970-01-01T00:00:00Z');
     
-    try {
-      // Get changes since last sync for each table
-      const tables = ['applications', 'companies', 'contacts', 'reminders'];
-      
-      for (const table of tables) {
-        console.log(`Pulling remote changes for table: ${table}`);
-        
-        // Ensure authentication header is set for this specific request
-        const authService = getAuthService();
-        const headers: Record<string, string> = {};
-        
-        if (authService) {
-          const accessToken = await authService.getAccessToken();
-          if (accessToken) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-            console.log(`Direct auth header set for ${table} request:`, `Bearer ${accessToken.substring(0, 20)}...`);
-          }
-        }
-        
-        const response = await this.httpClient.get(`/api/synchronizeJobManager/${table}`, {
-          params: { since: lastSyncTime },
-          headers: headers // Explicitly set headers on this request
-        });
-
-        if (response.data && response.data.length > 0) {
-          await this.applyRemoteChanges(table, response.data);
-          result.syncedTables = Array.from(new Set([...result.syncedTables, table]));
-        }
-      }
-    } catch (error) {
-      result.errors.push({
-        table: 'remote',
-        recordId: 0,
-        operation: 'pull',
-        error: error instanceof Error ? error.message : 'Failed to pull remote changes',
-        retryable: true,
-      });
-    }
-  }
-
-  /**
-   * Push a single sync item to cloud
-   */
-  private async pushSyncItem(item: SyncQueueItem): Promise<void> {
-    const endpoint = `/api/synchronizeJobManager/${item.table_name}`;
+    console.log(`Pulling remote changes from Supabase since ${lastSyncTime}...`);
     
-    // Explicitly get auth token and set headers for this request
-    const authService = getAuthService();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'JobManager-Electron/1.0.0',
-    };
+    const { syncedTables, errors } = await this.supabaseDataService.pullRemoteChanges(lastSyncTime);
     
-    if (authService) {
-      const accessToken = await authService.getAccessToken();
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-        console.log(`Push ${item.operation}: Auth header set for ${item.table_name}:`, `Bearer ${accessToken.substring(0, 20)}...`);
-      } else {
-        console.warn(`Push ${item.operation}: No access token available for ${item.table_name}`);
-      }
-    } else {
-      console.warn(`Push ${item.operation}: Auth service not available for ${item.table_name}`);
-    }
-    
-    const requestConfig = { headers: headers };
-    
-    switch (item.operation) {
-      case 'create':
-      case 'update':
-        const data = item.data ? JSON.parse(item.data) : {};
-        const payload = {
-          local_id: item.record_id,
-          data,
-          operation: item.operation,
-          timestamp: new Date().toISOString(),
-        };
-        
-        if (item.operation === 'create') {
-          await this.httpClient.post(endpoint, payload, requestConfig);
-        } else {
-          await this.httpClient.put(`${endpoint}/${item.record_id}`, payload, requestConfig);
-        }
-        break;
-
-      case 'delete':
-        await this.httpClient.delete(`${endpoint}/${item.record_id}`, requestConfig);
-        break;
-    }
-  }
-
-  /**
-   * Apply remote changes to local database
-   */
-  private async applyRemoteChanges(table: string, changes: CloudRecord[]): Promise<void> {
-    for (const change of changes) {
-      try {
-        if (change.deleted_at) {
-          // Handle deletion
-          await this.handleRemoteDeletion(table, change);
-        } else {
-          // Handle creation or update
-          await this.handleRemoteUpsert(table, change);
-        }
-      } catch (error) {
-        console.error(`Failed to apply remote change for ${table}:`, error);
-      }
-    }
-  }
-
-  /**
-   * Handle remote record deletion
-   */
-  private async handleRemoteDeletion(table: string, record: CloudRecord): Promise<void> {
-    // Find local record by cloud ID
-    const localRecord = await this.db.get(
-      `SELECT * FROM ${table} WHERE supabase_id = ?`,
-      [record.id]
-    );
-
-    if (localRecord) {
-      await this.db.run(`DELETE FROM ${table} WHERE id = ?`, [localRecord.id]);
-      console.log(`Deleted local ${table} record ${localRecord.id}`);
-    }
-  }
-
-  /**
-   * Handle remote record creation or update
-   */
-  private async handleRemoteUpsert(table: string, record: CloudRecord): Promise<void> {
-    // Check if record already exists locally
-    const existing = await this.db.get(
-      `SELECT * FROM ${table} WHERE supabase_id = ?`,
-      [record.id]
-    );
-
-    const data = record.data;
-    
-    if (existing) {
-      // Update existing record
-      await this.updateLocalRecord(table, existing.id, data, record);
-    } else {
-      // Create new record
-      await this.createLocalRecord(table, data, record);
-    }
-  }
-
-  /**
-   * Update local record with remote data
-   */
-  private async updateLocalRecord(table: string, localId: number, data: any, cloudRecord: CloudRecord): Promise<void> {
-    const fields = Object.keys(data).filter(key => key !== 'id');
-    const setClause = fields.map(field => `${field} = ?`).join(', ');
-    const values = fields.map(field => data[field]);
-
-    await this.db.run(
-      `UPDATE ${table} SET ${setClause}, supabase_id = ?, last_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [...values, cloudRecord.id, localId]
-    );
-  }
-
-  /**
-   * Create local record from remote data
-   */
-  private async createLocalRecord(table: string, data: any, cloudRecord: CloudRecord): Promise<void> {
-    const fields = Object.keys(data).filter(key => key !== 'id');
-    const placeholders = fields.map(() => '?').join(', ');
-    const values = fields.map(field => data[field]);
-
-    await this.db.run(
-      `INSERT INTO ${table} (${fields.join(', ')}, supabase_id, sync_status, last_synced_at) 
-       VALUES (${placeholders}, ?, 'synced', CURRENT_TIMESTAMP)`,
-      [...values, cloudRecord.id]
-    );
+    result.syncedTables = Array.from(new Set([...result.syncedTables, ...syncedTables]));
+    result.errors.push(...errors);
   }
 
   /**
@@ -801,17 +527,6 @@ export class SyncService {
   }
 
   /**
-   * Check if error is retryable
-   */
-  private isRetryableError(error: any): boolean {
-    if (axios.isAxiosError(error)) {
-      // Retry on server errors but not client errors
-      return error.response ? error.response.status >= 500 : true;
-    }
-    return true; // Retry unknown errors
-  }
-
-  /**
    * Get sync status
    */
   async getSyncStatus(): Promise<{
@@ -917,12 +632,17 @@ export class SyncService {
       }
     } else {
       if (!syncAvailable) {
-        console.log('Skipping shutdown sync - API not available');
+        console.log('Skipping shutdown sync - Supabase not available');
       } else if (!this.config.enableSync) {
         console.log('Skipping shutdown sync - sync disabled');
       } else {
         console.log('Skipping shutdown sync - sync already in progress');
       }
+    }
+    
+    // Cleanup realtime subscriptions
+    if (this.supabaseDataService) {
+      await this.supabaseDataService.cleanup();
     }
     
     console.log('SyncService shut down');

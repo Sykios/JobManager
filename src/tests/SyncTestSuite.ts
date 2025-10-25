@@ -26,9 +26,10 @@ export class SyncTestSuite {
         });
         
         // Initialize sync service
+        const supabaseClient = (this.authService as any).supabase;
         this.syncService = new SyncService(db, {
-            apiBaseUrl: 'https://jobmanager-api.vercel.app/api',
-            enableSync: true
+            enableSync: true,
+            supabaseClient
         });
         
         console.log('✅ Test suite initialized');

@@ -179,10 +179,18 @@ const initializeSyncService = async (): Promise<void> => {
   try {
     const db = getDatabase();
     
+    // Get Supabase client from auth service
+    const supabaseClient = authService ? (authService as any).supabase : null;
+    
+    if (!supabaseClient) {
+      console.warn('Supabase client not available, sync disabled');
+      return;
+    }
+    
     // Sync configuration
     const syncConfig: SyncConfig = {
-      apiBaseUrl: process.env.SYNC_API_URL || 'https://jobmanager-api.vercel.app',
       enableSync: process.env.ENABLE_SYNC !== 'false', // Default to true unless explicitly disabled
+      supabaseClient,
     };
 
     syncService = new SyncService(db, syncConfig);
