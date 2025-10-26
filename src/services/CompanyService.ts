@@ -50,9 +50,6 @@ export class CompanyService {
       throw new Error('Failed to create company');
     }
 
-    // Queue for sync
-    await this.queueForSync(result.lastID, 'create', company.toJSON());
-
     return this.getById(result.lastID);
   }
 
@@ -223,9 +220,6 @@ export class CompanyService {
       id
     ]);
 
-    // Queue for sync
-    await this.queueForSync(id, 'update', updatedCompany.toJSON());
-
     return this.getById(id);
   }
 
@@ -255,8 +249,6 @@ export class CompanyService {
       throw new Error('Company not found');
     }
 
-    // Queue for sync
-    await this.queueForSync(id, 'delete');
   }
 
   /**
@@ -370,19 +362,5 @@ export class CompanyService {
     return this.getById(keepId);
   }
 
-  /**
-   * Queue company for synchronization
-   */
-  private async queueForSync(recordId: number, operation: 'create' | 'update' | 'delete', data?: any): Promise<void> {
-    try {
-      await this.db.run(
-        `INSERT INTO sync_queue (table_name, record_id, operation, data) 
-         VALUES (?, ?, ?, ?)`,
-        ['companies', recordId, operation, data ? JSON.stringify(data) : null]
-      );
-    } catch (error) {
-      console.error('Failed to queue company for sync:', error);
-      // Don't fail the main operation if sync queueing fails
-    }
-  }
+  // Synchronization queueing is handled by database triggers (INSERT/UPDATE/DELETE)
 }

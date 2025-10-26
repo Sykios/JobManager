@@ -539,9 +539,21 @@ export class SupabaseDataService {
         await this.upsertRecord(table_name, localRecord, user.id);
         break;
       case 'delete':
-        // Hard delete (not currently used, but kept for compatibility)
-        if (localRecord?.supabase_id) {
-          await this.deleteRecord(table_name, localRecord.supabase_id);
+        // Hard delete: local record may already be gone; try to read supabase_id from queue data
+        let supabaseId: string | null = localRecord?.supabase_id || null;
+        if (!supabaseId && item.data) {
+          try {
+            const parsed = JSON.parse(item.data);
+            supabaseId = parsed?.supabase_id || null;
+          } catch (_) {
+            // ignore JSON parse errors
+          }
+        }
+        if (supabaseId) {
+          await this.deleteRecord(table_name, supabaseId);
+        } else {
+          // Nothing to delete remotely; treat as non-retryable no-op
+          return;
         }
         break;
     }

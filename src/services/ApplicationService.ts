@@ -124,12 +124,9 @@ export class ApplicationService {
       throw new Error('Failed to create application');
     }
 
-    const createdApplication = await this.getById(result.lastID);
+  const createdApplication = await this.getById(result.lastID);
     
-    // Queue for sync
-    await this.queueForSync(result.lastID, 'create', createdApplication.toJSON());
-    
-    return createdApplication;
+  return createdApplication;
   }  /**
    * Get application by ID
    */
@@ -173,32 +170,21 @@ export class ApplicationService {
     const query = `UPDATE applications SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
     await this.db.run(query, [...values, id]);
 
-    const updatedApplication = await this.getById(id);
+  const updatedApplication = await this.getById(id);
     
-    // Queue for sync
-    await this.queueForSync(id, 'update', updatedApplication.toJSON());
-
-    return updatedApplication;
+  // Queueing handled by DB triggers; avoid manual enqueue to prevent duplicates
+  return updatedApplication;
   }
 
   /**
    * Delete an application (soft delete)
    */
   async delete(id: number): Promise<void> {
-    const query = `
-      UPDATE applications 
-      SET deleted_at = CURRENT_TIMESTAMP, 
-          updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ? AND deleted_at IS NULL
-    `;
-    const result = await this.db.run(query, [id]);
-    
+    // Hard delete: remove row; triggers will enqueue a 'delete' sync item
+    const result = await this.db.run('DELETE FROM applications WHERE id = ?', [id]);
     if (result.changes === 0) {
-      throw new Error(`Application with ID ${id} not found or already deleted`);
+      throw new Error(`Application with ID ${id} not found`);
     }
-
-    // Add to sync queue as update (because it's a soft delete)
-    await this.queueForSync(id, 'update');
   }
 
   /**
@@ -452,28 +438,11 @@ export class ApplicationService {
       }
     }
 
-    // Queue for sync before deleting
-    await this.queueForSync(id, 'delete');
-
-    // Delete the application
+    // Delete the application (AFTER DELETE trigger will enqueue sync delete)
     await this.delete(id);
   }
 
-  /**
-   * Queue application for synchronization
-   */
-  private async queueForSync(recordId: number, operation: 'create' | 'update' | 'delete', data?: any): Promise<void> {
-    try {
-      await this.db.run(
-        `INSERT INTO sync_queue (table_name, record_id, operation, data) 
-         VALUES (?, ?, ?, ?)`,
-        ['applications', recordId, operation, data ? JSON.stringify(data) : null]
-      );
-    } catch (error) {
-      console.error('Failed to queue application for sync:', error);
-      // Don't fail the main operation if sync queueing fails
-    }
-  }
+  // Synchronization queueing is handled by database triggers (INSERT/UPDATE/DELETE)
 
   /**
    * Get applications with file statistics

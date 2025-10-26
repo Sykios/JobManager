@@ -2,6 +2,9 @@ import { Database } from 'sqlite';
 import * as sqlite3 from 'sqlite3';
 import * as migration001 from './migrations/001_initial';
 import * as migration002 from './migrations/002_migrate_file_blobs';
+import * as migration003 from './migrations/003_add_user_id';
+import * as migration004 from './migrations/004_fix_sync_triggers';
+import * as migration005 from './migrations/005_refresh_delete_triggers';
 
 interface Migration {
   version: string;
@@ -19,6 +22,21 @@ const migrations: Migration[] = [
     version: '002_migrate_file_blobs',
     up: migration002.up,
     down: migration002.down,
+  },
+  {
+    version: '003_add_user_id',
+    up: migration003.up,
+    down: migration003.down,
+  },
+  {
+    version: '004_fix_sync_triggers',
+    up: migration004.up,
+    down: migration004.down,
+  },
+  {
+    version: '005_refresh_delete_triggers',
+    up: migration005.up,
+    down: migration005.down,
   },
 ];
 
