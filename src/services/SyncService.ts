@@ -366,14 +366,20 @@ export class SyncService {
     
     const errors = await this.supabaseDataService.pushLocalChanges(queueItems);
     
-    // Mark successfully synced items
+    // Mark successfully synced items and handle errors
     for (const item of queueItems) {
       const hasError = errors.find(e => e.recordId === item.record_id && e.table === item.table_name);
       
       if (!hasError) {
+        // Successfully synced
         await this.markSyncItemProcessed(item.id);
         result.syncedTables = Array.from(new Set([...result.syncedTables, item.table_name]));
+      } else if (!hasError.retryable || item.retry_count >= 5) {
+        // Non-retryable error or too many retries - mark as processed to avoid endless loops
+        console.warn(`Marking sync item ${item.id} as processed after error: ${hasError.error}`);
+        await this.markSyncItemProcessed(item.id);
       } else {
+        // Retryable error - update error counter
         await this.updateSyncItemError(item.id, hasError.error);
       }
     }

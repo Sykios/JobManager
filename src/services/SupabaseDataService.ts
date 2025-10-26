@@ -42,24 +42,24 @@ export interface SyncError {
  */
 const TABLE_FIELD_MAPPING = {
   companies: {
-    syncFields: ['name', 'website', 'industry', 'location', 'size', 'description'],
+    syncFields: ['name', 'website', 'industry', 'location', 'size', 'description', 'deleted_at'],
     foreignKeys: [],
-    excludeFields: ['id', 'created_at', 'updated_at', 'deleted_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'created_at', 'updated_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
   },
   contacts: {
-    syncFields: ['company_id', 'first_name', 'last_name', 'email', 'phone', 'position', 'linkedin_url', 'notes'],
+    syncFields: ['company_id', 'first_name', 'last_name', 'email', 'phone', 'position', 'linkedin_url', 'notes', 'deleted_at'],
     foreignKeys: ['company_id'],
-    excludeFields: ['id', 'created_at', 'updated_at', 'deleted_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'created_at', 'updated_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
   },
   applications: {
     syncFields: [
       'company_id', 'contact_id', 'title', 'position', 'job_url', 'application_channel',
       'salary_range', 'work_type', 'location', 'remote_possible', 'status', 'priority',
       'application_date', 'deadline', 'follow_up_date', 'notes', 'cover_letter',
-      'requirements', 'benefits'
+      'requirements', 'benefits', 'deleted_at'
     ],
     foreignKeys: ['company_id', 'contact_id'],
-    excludeFields: ['id', 'created_at', 'updated_at', 'deleted_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'created_at', 'updated_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
   },
   reminders: {
     syncFields: [
@@ -67,23 +67,23 @@ const TABLE_FIELD_MAPPING = {
       'reminder_type', 'is_completed', 'completed_at', 'is_active',
       'email_notification_enabled', 'notification_time', 'priority',
       'recurrence_pattern', 'auto_generated', 'parent_reminder_id',
-      'snooze_until', 'completion_note'
+      'snooze_until', 'completion_note', 'deleted_at'
     ],
     foreignKeys: ['application_id', 'parent_reminder_id'],
-    excludeFields: ['id', 'created_at', 'updated_at', 'deleted_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'created_at', 'updated_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
   },
   files: {
     syncFields: [
       'application_id', 'filename', 'original_name', 'file_path', 'size',
-      'mime_type', 'type', 'description', 'storage_path', 'upload_date'
+      'mime_type', 'type', 'description', 'storage_path', 'upload_date', 'deleted_at'
     ],
     foreignKeys: ['application_id'],
-    excludeFields: ['id', 'data', 'created_at', 'updated_at', 'deleted_at', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'data', 'created_at', 'updated_at', 'last_synced_at', 'sync_version', 'user_id'],
   },
   status_history: {
-    syncFields: ['application_id', 'from_status', 'to_status', 'note', 'created_by'],
+    syncFields: ['application_id', 'from_status', 'to_status', 'note', 'created_by', 'deleted_at'],
     foreignKeys: ['application_id'],
-    excludeFields: ['id', 'created_at', 'deleted_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
+    excludeFields: ['id', 'created_at', 'supabase_id', 'sync_status', 'last_synced_at', 'sync_version', 'user_id'],
   },
 };
 
@@ -490,12 +490,16 @@ export class SupabaseDataService {
       try {
         await this.pushSyncItem(item);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        // "Local record not found" is not retryable - the record was deleted
+        const isRetryable = !errorMessage.includes('Local record not found');
+        
         errors.push({
           table: item.table_name,
           recordId: item.record_id,
           operation: item.operation,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          retryable: true,
+          error: errorMessage,
+          retryable: isRetryable,
         });
       }
     }
@@ -509,7 +513,7 @@ export class SupabaseDataService {
   private async pushSyncItem(item: any): Promise<void> {
     const { table_name, record_id, operation } = item;
     
-    // Get local record
+    // Get local record (including soft-deleted records with deleted_at)
     const localRecord = await this.db.get(
       `SELECT * FROM ${table_name} WHERE id = ?`,
       [record_id]
@@ -528,9 +532,14 @@ export class SupabaseDataService {
     switch (operation) {
       case 'create':
       case 'update':
+        // If record has deleted_at set, it's a soft delete - sync it as an update with deleted_at
+        if (!localRecord) {
+          throw new Error(`Local record not found: ${table_name}#${record_id}`);
+        }
         await this.upsertRecord(table_name, localRecord, user.id);
         break;
       case 'delete':
+        // Hard delete (not currently used, but kept for compatibility)
         if (localRecord?.supabase_id) {
           await this.deleteRecord(table_name, localRecord.supabase_id);
         }
@@ -642,12 +651,15 @@ export class SupabaseDataService {
       try {
         console.log(`Pulling changes for ${table} since ${lastSyncTime}`);
         
+        // status_history only has created_at, not updated_at
+        const timestampField = table === 'status_history' ? 'created_at' : 'updated_at';
+        
         const { data, error } = await this.supabase
           .from(table)
           .select('*')
           .eq('user_id', user.id)
-          .gte('updated_at', lastSyncTime)
-          .order('updated_at', { ascending: true });
+          .gte(timestampField, lastSyncTime)
+          .order(timestampField, { ascending: true });
 
         if (error) {
           throw error;

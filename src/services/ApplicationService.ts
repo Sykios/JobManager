@@ -134,7 +134,7 @@ export class ApplicationService {
    * Get application by ID
    */
   async getById(id: number): Promise<ApplicationModel> {
-    const query = 'SELECT * FROM applications WHERE id = ?';
+    const query = 'SELECT * FROM applications WHERE id = ? AND deleted_at IS NULL';
     const row = await this.db.get<Application>(query, [id]);
     
     if (!row) {
@@ -182,15 +182,23 @@ export class ApplicationService {
   }
 
   /**
-   * Delete an application
+   * Delete an application (soft delete)
    */
   async delete(id: number): Promise<void> {
-    const query = 'DELETE FROM applications WHERE id = ?';
+    const query = `
+      UPDATE applications 
+      SET deleted_at = CURRENT_TIMESTAMP, 
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ? AND deleted_at IS NULL
+    `;
     const result = await this.db.run(query, [id]);
     
     if (result.changes === 0) {
-      throw new Error(`Application with ID ${id} not found`);
+      throw new Error(`Application with ID ${id} not found or already deleted`);
     }
+
+    // Add to sync queue as update (because it's a soft delete)
+    await this.queueForSync(id, 'update');
   }
 
   /**
@@ -199,7 +207,7 @@ export class ApplicationService {
   async getAll(filters?: ApplicationFilters): Promise<ApplicationModel[]> {
     let query = 'SELECT * FROM applications';
     const params: any[] = [];
-    const conditions: string[] = [];
+    const conditions: string[] = ['deleted_at IS NULL']; // Filter out soft-deleted records
 
     if (filters) {
       if (filters.status) {
@@ -307,7 +315,7 @@ export class ApplicationService {
   /**
    * Get applications with upcoming deadlines
    */
-  async getUpcomingDeadlines(daysAhead: number = 7): Promise<ApplicationModel[]> {
+  async getUpcomingDeadlines(daysAhead = 7): Promise<ApplicationModel[]> {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
     
