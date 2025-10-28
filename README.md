@@ -75,12 +75,13 @@ Ein digitales Bewerbungs-Management-Tool für Berufseinsteiger, um Bewerbungen z
 - Gespeicherte Filtereinstellungen
 
 ### 8. Authentication & Cloud-Sync
-- Passwordless Authentication mit Magic Links
-- Supabase Integration für sichere Cloud-Speicherung
-- Bidirektionale Synchronisation zwischen Geräten
-- Offline-Fähigkeit mit automatischer Sync bei Verbindung
-- Konfliktlösung und Versionskontrolle
-- Benutzer-Sessions mit automatischer Token-Erneuerung
+- **Passwordless Authentication**: Magic Link via E-Mail für sicheren Login
+- **Direct Supabase Integration**: Native Kommunikation mit Supabase (keine Middleware API)
+- **Row Level Security (RLS)**: Automatische Datenisolierung per User
+- **Bidirektionale Synchronisation**: Realtime-Updates zwischen allen Geräten
+- **Offline-First**: Vollständige App-Funktionalität ohne Internetverbindung
+- **Automatische Konfliktlösung**: Last-write-wins basierend auf Timestamps
+- **Session Management**: Sichere Token-Speicherung mit automatischer Erneuerung
 
 ### 9. Automatische Updates
 - Automatische Update-Erkennung bei Programmstart
@@ -94,12 +95,12 @@ Ein digitales Bewerbungs-Management-Tool für Berufseinsteiger, um Bewerbungen z
 
 - **Frontend**: React + TypeScript + Tailwind CSS
 - **Desktop**: Electron (Cross-Platform: Windows, macOS, Linux)
-- **Datenbank**: SQLite (lokal) + Supabase PostgreSQL (Cloud-Sync)
+- **Datenbank**: SQLite (lokal) + Supabase PostgreSQL (Cloud)
 - **Authentication**: Supabase Auth mit Magic Links (passwordless)
-- **Synchronization**: Bidirektionale Cloud-Sync mit Konfliktlösung
+- **Synchronization**: Direct Supabase SDK mit Realtime Subscriptions
+- **Security**: Row Level Security (RLS) für Datenisolierung
 - **Updates**: Electron-Updater mit GitHub-Integration
 - **Build Tool**: Webpack + TypeScript Compiler
-- **API Integration**: Axios für HTTP-Kommunikation
 
 ## Projektstruktur
 
@@ -142,7 +143,7 @@ JobManager/
 - Node.js 18+
 - npm oder yarn
 - Git
-- Supabase Account (für Cloud-Sync, optional)
+- Supabase Account (für Cloud-Sync, siehe [Setup-Guide](docs/SUPABASE_SETUP.md))
 
 ### Installation
 ```bash
@@ -153,13 +154,29 @@ cd JobManager
 # Dependencies installieren
 npm install
 
-# Environment Variables einrichten (optional für Cloud-Sync)
-cp .env.example .env.development
-# SUPABASE_URL und SUPABASE_ANON_KEY eintragen
+# Environment Variables einrichten (erforderlich für Cloud-Sync)
+# .env Datei mit Supabase Credentials erstellen
+# WICHTIG: Ersetze die Platzhalter mit deinen echten Supabase Credentials!
+echo "SUPABASE_URL=https://your-project.supabase.co" > .env  # Ersetze mit deiner Project URL
+echo "SUPABASE_ANON_KEY=your-anon-key" >> .env  # Ersetze mit deinem anon public key
+echo "ENABLE_SYNC=true" >> .env
+
+# Supabase Datenbank einrichten (siehe docs/SUPABASE_SETUP.md)
+# SQL Schema aus docs/supabase-schema.sql in Supabase SQL Editor ausführen
 
 # Development starten
 npm run dev
 
 # Production Build
 npm run build
+
+# Electron App paketieren
+npm run dist
 ```
+
+### Supabase Setup
+Detaillierte Anleitung zur Einrichtung von Supabase findest du in [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md):
+- Datenbank-Schema einrichten
+- Authentication konfigurieren
+- Row Level Security aktivieren
+- Realtime Subscriptions aktivieren

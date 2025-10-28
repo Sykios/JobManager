@@ -44,12 +44,9 @@ export class ReminderService {
       reminder.is_active
     ]);
 
-    const createdReminder = await this.getReminderById(result.lastID);
-    
-    // Queue for sync
-    await this.queueForSync(result.lastID, 'create', createdReminder.toJSON());
-
-    return createdReminder;
+  const createdReminder = await this.getReminderById(result.lastID);
+  // Queueing handled by DB trigger; no manual enqueue to avoid duplicates
+  return createdReminder;
   }
 
   /**
@@ -90,38 +87,25 @@ export class ReminderService {
       id
     ]);
 
-    const finalReminder = await this.getReminderById(id);
-    
-    // Queue for sync
-    await this.queueForSync(id, 'update', finalReminder.toJSON());
-
-    return finalReminder;
+  const finalReminder = await this.getReminderById(id);
+  // Queueing handled by DB trigger; no manual enqueue to avoid duplicates
+  return finalReminder;
   }
 
   /**
    * Delete a reminder (soft delete)
    */
   static async deleteReminder(id: number): Promise<void> {
-    await window.electronAPI.executeQuery(`
-      UPDATE reminders SET 
-        deleted_at = CURRENT_TIMESTAMP, 
-        is_active = FALSE,
-        updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `, [id]);
-
-    // Queue for sync
-    await this.queueForSync(id, 'delete');
+    // Hard delete. DB AFTER DELETE trigger will enqueue sync delete
+    await window.electronAPI.executeQuery('DELETE FROM reminders WHERE id = ?', [id]);
   }
 
   /**
    * Permanently delete a reminder
    */
   static async hardDeleteReminder(id: number): Promise<void> {
-    // Queue for sync before deleting
-    await this.queueForSync(id, 'delete');
-    
-    await window.electronAPI.executeQuery('DELETE FROM reminders WHERE id = ?', [id]);
+  // Hard delete; DB trigger will enqueue sync delete
+  await window.electronAPI.executeQuery('DELETE FROM reminders WHERE id = ?', [id]);
   }
 
   /**

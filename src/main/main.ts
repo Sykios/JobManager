@@ -2,10 +2,9 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
-import { setupDatabase, initializeDatabase, getDatabase } from '../database';
+import { setupDatabase, getDatabase } from '../database';
 import { SyncService, SyncConfig } from '../services/SyncService';
-import { createAuthService, getAuthService, AuthConfig } from '../services/AuthService';
-import { v4 as uuidv4 } from 'uuid';
+import { createAuthService, AuthConfig } from '../services/AuthService';
 import * as dotenv from 'dotenv';
 
 // Load environment variables from .env file
@@ -34,7 +33,8 @@ const handleDeepLink = async (url: string): Promise<void> => {
       
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
-      const expiresAt = params.get('expires_at');
+      // expiresAt can be used in the future if needed
+      // const expiresAt = params.get('expires_at');
       const error = params.get('error');
       const errorDescription = params.get('error_description');
       
@@ -109,7 +109,7 @@ app.on('open-url', (event, url) => {
 });
 
 // Handle deep links when app is not running (Windows)
-app.on('second-instance', (event, commandLine, workingDirectory) => {
+app.on('second-instance', (_event, commandLine, _workingDirectory) => {
   // Someone tried to run a second instance, focus our window instead
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -179,10 +179,18 @@ const initializeSyncService = async (): Promise<void> => {
   try {
     const db = getDatabase();
     
+    // Get Supabase client from auth service
+    const supabaseClient = authService ? (authService as any).supabase : null;
+    
+    if (!supabaseClient) {
+      console.warn('Supabase client not available, sync disabled');
+      return;
+    }
+    
     // Sync configuration
     const syncConfig: SyncConfig = {
-      apiBaseUrl: process.env.SYNC_API_URL || 'https://jobmanager-api.vercel.app',
       enableSync: process.env.ENABLE_SYNC !== 'false', // Default to true unless explicitly disabled
+      supabaseClient,
     };
 
     syncService = new SyncService(db, syncConfig);
